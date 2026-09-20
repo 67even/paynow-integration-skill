@@ -145,18 +145,21 @@ cp -r paynow-skills/paynow-integration ~/.claude/skills/
 
 Claude picks the skill up automatically the next time it starts.
 
-### Option 2 — packaged `.skill` bundle
+### Option 2 — claude.ai, desktop and mobile
 
-Build a distributable bundle and install it through the Claude UI:
+Upload a ZIP once and the skill is available everywhere you are signed in. Run this
+from inside `paynow-skills/`:
 
 ```bash
-zip -r paynow-integration.skill paynow-integration \
-  -x '*/evals/*' -x '*/.DS_Store' \
-  && echo "built paynow-integration.skill"
+zip -r paynow-integration.zip paynow-integration \
+  -x '*/evals/*' -x '*/.DS_Store'
 ```
 
-Run that from inside `paynow-skills/`. Attach the resulting file in Claude and click
-**Save skill**.
+Then in Claude: **Customize → Skills → + → Create skill → Upload a skill**.
+
+Zip the *folder*, not its contents — the archive has to contain
+`paynow-integration/SKILL.md`, and the folder name must match the `name:` in
+`SKILL.md`.
 
 ### Option 3 — reference only, no skill
 
@@ -165,6 +168,9 @@ lift the starter code from `paynow-skills/paynow-integration/assets/`, and run t
 scripts against your own project.
 
 ### Verify the install
+
+Run `/skills` in Claude Code — `paynow-integration` should be listed. Then check the
+code itself:
 
 ```bash
 cd paynow-skills/paynow-integration

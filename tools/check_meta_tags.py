@@ -9,6 +9,10 @@ showing a snippet or a card. Nothing about the page looks wrong.
 
 Checked on every rendered page:
 
+    exactly one <h1>              the strongest on-page topic signal after
+                                  <title>; just-the-docs emits {{ content }} and
+                                  no heading of its own, so a page that does not
+                                  write one simply has none
     <title>                       non-empty
     meta description              present and at least 50 characters
     canonical                     absolute https URL
@@ -66,8 +70,13 @@ def check_pages(root):
     bad, pages, seen = [], 0, set()
     for path in sorted(html_files(root)):
         rel = os.path.relpath(path, root).replace(os.sep, "/")
-        head = head_of(path)
+        body = io.open(path, encoding="utf-8").read()
+        head = body.split("</head>")[0]
         pages += 1
+
+        n_h1 = len(re.findall(r"<h1\b", body.split("</head>")[-1]))
+        if n_h1 != 1:
+            bad.append("%s has %d <h1> headings, expected exactly 1" % (rel, n_h1))
         seen.add("/" + rel.replace("index.html", ""))
         for name, pattern in REQUIRED:
             if not re.search(pattern, head, re.S):

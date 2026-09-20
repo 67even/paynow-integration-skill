@@ -34,6 +34,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   against the *rendered* site by a new CI job that builds it with Jekyll.
   Structured data fails silently — a stray comma out of Liquid and Google drops
   the block with nothing visibly wrong — so checking the template is not enough.
+- An **Installing the skill** page on the documentation site, second in the
+  sidebar. The repository shipped a skill that the site never explained how to
+  install: where the files go for Claude Code and for claude.ai, how to confirm
+  Claude actually loaded it with `/skills`, what to ask once it has, and how to
+  update or remove it.
+
+### Fixed
+
+- Every page was rendering without an `<h1>`. `build_docs.py` stripped the source
+  heading on the assumption that just-the-docs renders `page.title` as one — its
+  default layout emits `{{ content }}` and nothing else, so the pages simply had
+  none. The heading is now restated from the page title, so the `<h1>`, the
+  `<title>` and the sidebar label all agree. `check_meta_tags.py` fails the build
+  if a page ever has zero or more than one.
+- The README described installing the packaged bundle by attaching a `.skill`
+  file and clicking "Save skill". It is a ZIP, uploaded through
+  **Customize → Skills**.
+
 - Google Search Console verification on the entry page. The token sits in
   `docs/_config.yml`; `check_meta_tags.py` fails the build if the tag ever goes
   missing, because Google re-checks it and quietly un-verifies the property.

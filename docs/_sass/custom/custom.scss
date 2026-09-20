@@ -56,6 +56,15 @@ pre.highlight {
     margin-bottom: 0.75rem;
   }
 
+  // The logo is the 67even mark, not the product name, so the page still needs
+  // to say what it is - and every page needs exactly one h1.
+  .hero-title {
+    font-size: 2.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem;
+  }
+
   .hero-tagline {
     color: #a3a3a2;
     font-size: 1.05rem;

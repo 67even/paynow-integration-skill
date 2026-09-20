@@ -41,42 +41,46 @@ DATE_TOKEN = "@@LAST_MODIFIED@@"
 PUBLISHED = "2026-09-20"
 
 # source file, permalink, nav title, nav_order, meta description, optional lede
+#
+# nav_order starts at 3: docs/index.md is 1 and docs/install.md is 2, and both
+# are hand-written rather than generated from a reference file. Inserting a page
+# above these means renumbering here AND leaving the hand-written ones alone.
 PAGES = [
     (
-        "troubleshooting.md", "/troubleshooting/", "Troubleshooting", 2,
+        "troubleshooting.md", "/troubleshooting/", "Troubleshooting", 3,
         "Symptom-to-cause table for Paynow Zimbabwe: hash mismatches, callbacks that "
         "never arrive, and orders marked paid that are never fulfilled.",
         "Start here when something is broken. Most Paynow problems are one of about a "
         "dozen things, and the symptom usually points straight at the cause.",
     ),
     (
-        "hashing.md", "/hashing/", "Hashing & signatures", 3,
+        "hashing.md", "/hashing/", "Hashing & signatures", 4,
         "Why Paynow hashes mismatch and how to fix it: field order, URL-decoding, "
         "hashing every returned value, and lower-casing the integration key.",
         "Almost every “Paynow isn’t working” report is a hashing bug. Prove the "
         "helper against the two fixtures below and the whole class of failure disappears.",
     ),
     (
-        "php-laravel.md", "/php-laravel/", "PHP & Laravel", 4,
+        "php-laravel.md", "/php-laravel/", "PHP & Laravel", 5,
         "Integrating Paynow in PHP and Laravel: the SDK's API, the exceptions it throws, "
         "why paid() does not mean paid, and complete controller wiring.",
         None,
     ),
     (
-        "nodejs-express.md", "/nodejs-express/", "Node.js & Express", 5,
+        "nodejs-express.md", "/nodejs-express/", "Node.js & Express", 6,
         "Integrating Paynow in Node.js and Express: why status.paid() throws, why "
         "pollTransaction must be awaited, and a raw client for InnBucks.",
         None,
     ),
     (
-        "raw-http.md", "/raw-http/", "HTTP API reference", 6,
+        "raw-http.md", "/raw-http/", "HTTP API reference", 7,
         "The Paynow Zimbabwe HTTP interface for any language: endpoints, request fields, "
         "status values, Express Checkout and the status-update callback.",
         "Use this for any language without an official SDK, and for the Express Checkout "
         "methods the PHP and Node SDKs don’t wrap.",
     ),
     (
-        "testing-and-golive.md", "/testing/", "Testing & go-live", 7,
+        "testing-and-golive.md", "/testing/", "Testing & go-live", 8,
         "Testing Paynow: the merchant-account rule that blocks your own test payments, "
         "the four EcoCash test numbers, card tokens, and the go-live checklist.",
         None,
@@ -94,10 +98,17 @@ def q(s):
     return '"%s"' % s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def transform(body, self_permalink):
-    """Drop the H1 (just-the-docs renders page.title as the H1) and turn the
-    references' backticked file mentions into links a reader can follow."""
+def transform(body, self_permalink, title):
+    """Restate the H1 from `title`, and turn the references' backticked file
+    mentions into links a reader can follow.
+
+    The H1 used to be stripped here, on the assumption that just-the-docs
+    renders page.title as one. It does not - its default layout emits
+    {{ content }} and nothing else, so every page shipped without an H1 at all.
+    The source heading is replaced rather than kept so that the H1, the <title>
+    and the sidebar label are the same words."""
     body = re.sub(r"\A#\s+.*?\n+", "", body, count=1)
+    body = "# %s\n\n%s" % (title, body)
 
     def link(m):
         target = SLUGS.get(m.group(1))
@@ -143,7 +154,7 @@ def build():
             fm.append("lede: %s" % q(lede))
         fm.append("---")
 
-        body = transform(read(path), permalink)
+        body = transform(read(path), permalink, title)
         lede_html = ""
         if lede:
             lede_html = '\n{: .fs-5 .fw-300 }\n%s\n{: .no_toc }\n' % lede

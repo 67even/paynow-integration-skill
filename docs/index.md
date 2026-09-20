@@ -15,6 +15,7 @@ image:
 
 <div class="hero" markdown="0">
   <img class="hero-mark" src="{{ '/assets/images/67even-logo.png' | relative_url }}" alt="67even">
+  <h1 class="hero-title">Paynow Integration Skill</h1>
   <p class="hero-tagline">Integrating the Paynow Zimbabwe payment gateway without the bugs that cost merchants money.</p>
   <p class="hero-badges">
     <a href="https://github.com/67even/paynow-integration-skill/stargazers"><img src="https://img.shields.io/github/stars/67even/paynow-integration-skill?style=flat-square&logo=github&label=Stars&color=FF3131&labelColor=0C0E0B" alt="GitHub stars"></a>
@@ -26,7 +27,7 @@ image:
 
 <div class="hero-actions" markdown="1">
 [View on GitHub](https://github.com/67even/paynow-integration-skill){: .btn .btn-primary }
-[Troubleshoot a problem](troubleshooting/){: .btn }
+[Install the skill](install/){: .btn }
 </div>
 
 ---
@@ -66,6 +67,7 @@ directly, not taken from the documentation.
 
 | | |
 |:--|:--|
+| [**Installing the skill**](install/) | Put the skill in Claude Code or on claude.ai, and confirm it loaded. |
 | [**Troubleshooting**](troubleshooting/) | Something is broken right now. Symptom-to-cause table. |
 | [**Hashing & signatures**](hashing/) | Hash mismatches, and the two fixtures Paynow publishes. |
 | [**PHP & Laravel**](php-laravel/) | SDK surface, the exceptions it throws, complete wiring. |

@@ -156,34 +156,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Every relative link and in-page anchor must resolve
+      - name: Every internal link and anchor must resolve
         run: |
-          python3 - <<'PY'
-          import re, os, io, sys
-          bad = []
-          def slug(h):
-              s = re.sub(r"<[^>]+>", "", h).strip().lower()
-              s = re.sub(r"[^\w\s-]", "", s)
-              return s.replace(" ", "-").strip("-")
-          for dp, dn, fn in os.walk("."):
-              if ".git" in dp: continue
-              for f in fn:
-                  if not f.endswith(".md"): continue
-                  p = os.path.join(dp, f)
-                  t = io.open(p, encoding="utf-8").read()
-                  heads = {slug(h) for h in re.findall(r"^#{1,6}\s+(.*?)\s*$", t, re.M)}
-                  for target in re.findall(r"\]\(([^)\s]+)\)", t):
-                      if target.startswith(("http", "mailto:")): continue
-                      if target.startswith("#"):
-                          if target[1:] not in heads:
-                              bad.append("%s -> %s" % (p, target))
-                          continue
-                      base = target.split("#")[0]
-                      if base and not os.path.exists(os.path.normpath(os.path.join(dp, base))):
-                          bad.append("%s -> %s" % (p, target))
-          for b in bad: print("::error::broken link", b)
-          sys.exit(1 if bad else 0)
-          PY
+          # Repository Markdown links are filesystem paths; docs/ links are Jekyll
+          # permalinks. Checking the second set against the filesystem reports a
+          # dozen false failures, which is exactly what happened when this lived
+          # as a heredoc in this file. It is a real script now so it can be run
+          # locally, and tested against deliberately broken links.
+          python3 tools/check_links.py
 
       - name: SKILL.md frontmatter must be valid and the name must match the folder
         run: |

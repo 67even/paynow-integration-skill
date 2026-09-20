@@ -1,0 +1,94 @@
+// ---------------------------------------------------------------------------
+// Site-specific styling on top of just-the-docs.
+// Anything coloured here uses only the two logo colours or a mix of them.
+// ---------------------------------------------------------------------------
+
+$brand-red:   #ff3131;
+$brand-black: #0c0e0b;
+
+// --- sidebar logo ----------------------------------------------------------
+.site-logo {
+  // The logo is a red 6 over a white 7; it needs room to read at small sizes.
+  background-size: contain;
+  height: 3.2rem;
+  margin: 0.4rem 0;
+}
+
+// --- active navigation: a red rule rather than a heavy fill ----------------
+.nav-list .nav-list-item .nav-list-link.active {
+  color: $brand-red;
+  font-weight: 600;
+  background-image: none;
+  border-left: 3px solid $brand-red;
+  padding-left: calc(0.75rem - 3px);
+}
+
+// --- the header rule under the site title ---------------------------------
+.site-header {
+  border-bottom: 1px solid #333532;
+}
+
+// --- code: keep the red out of syntax, it fights with the accent -----------
+div.highlighter-rouge,
+figure.highlight,
+pre.highlight {
+  border: 1px solid #262825;
+  border-radius: 6px;
+}
+
+// --- tables read better with a little more air ----------------------------
+.main-content table {
+  th, td { padding: 0.55rem 0.7rem; }
+  th { background-color: #1b1c1a; }
+}
+
+// --- callouts -------------------------------------------------------------
+.warning { border-left-color: $brand-red; }
+
+// --- the landing hero ------------------------------------------------------
+.hero {
+  text-align: center;
+  padding: 1rem 0 0.25rem;
+
+  img.hero-mark {
+    width: 116px;
+    height: auto;
+    margin-bottom: 0.75rem;
+  }
+
+  .hero-tagline {
+    color: #a3a3a2;
+    font-size: 1.05rem;
+    max-width: 34rem;
+    margin: 0 auto 1rem;
+  }
+
+  .hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+
+    img { height: 20px; }
+  }
+}
+
+// --- the Paynow button sits in the footer of the landing page --------------
+.paynow-attribution {
+  text-align: center;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #262825;
+
+  img { width: 150px; height: auto; opacity: 0.85; }
+  p { color: #797a79; font-size: 0.8rem; margin-top: 0.6rem; }
+}
+
+// --- red buttons need BLACK text: white on #FF3131 is only 3.66:1 ----------
+.btn-primary {
+  color: $brand-black !important;
+  font-weight: 600;
+
+  &:hover { background-color: #ff5050 !important; }
+}

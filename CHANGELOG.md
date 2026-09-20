@@ -3,6 +3,28 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- Documentation site at <https://67even.github.io/paynow-integration-skill/>,
+  built with [just-the-docs](https://github.com/just-the-docs/just-the-docs) on a
+  67even dark theme whose palette is derived from the logo (`#FF3131` on
+  `#0C0E0B`). Full-text search, a stars badge, and `SoftwareSourceCode`
+  structured data.
+- `tools/check_docs_site.py` — validates the Jekyll configuration without a Ruby
+  toolchain, and runs in CI. GitHub Pages does not fail loudly on a bad config;
+  this catches a missing default layout, a `_layouts/` override shadowing the
+  theme, a `color_scheme` with no matching `_sass` file, a page missing front
+  matter, and a referenced logo or favicon that was never committed.
+
+### Changed
+
+- `tools/check_links.py` now also checks raw HTML `src` and `href` attributes,
+  skipping targets that contain Liquid. The README's Paynow button and the docs
+  hero images were previously unchecked.
+- The README links to the documentation site.
+
 ## [1.0.0] — 2026-09-20
 
 First release.

@@ -1,0 +1,33 @@
+<link rel="icon" type="image/png" href="{{ '/assets/images/favicon.png' | relative_url }}">
+<meta name="theme-color" content="#0c0e0b">
+
+{%- if page.url == "/" %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "Paynow Integration Skill",
+  "description": {{ site.description | strip_newlines | jsonify }},
+  "codeRepository": "https://github.com/{{ site.repository }}",
+  "url": "{{ site.url }}{{ site.baseurl }}/",
+  "programmingLanguage": ["PHP", "JavaScript", "Python"],
+  "runtimePlatform": ["Laravel", "Node.js", "Express"],
+  "license": "https://spdx.org/licenses/MIT.html",
+  "author": {
+    "@type": "Person",
+    "name": "John Mugabe",
+    "url": "https://github.com/johnmugabe"
+  },
+  "maintainer": {
+    "@type": "Organization",
+    "name": "67even",
+    "url": "https://github.com/67even"
+  },
+  "about": {
+    "@type": "Thing",
+    "name": "Paynow Zimbabwe payment gateway integration"
+  },
+  "keywords": "Paynow, Zimbabwe, payment gateway, EcoCash, OneMoney, InnBucks, O'mari, Zimswitch, PHP, Laravel, Node.js"
+}
+</script>
+{%- endif %}

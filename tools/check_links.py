@@ -56,17 +56,17 @@ def headings(body):
 
 
 def links(body):
-    """Every internal reference, ignoring fenced code blocks.
+    """Every internal target, ignoring anything inside fenced code blocks.
 
-    Covers Markdown links AND the src/href of raw HTML, because the README uses
-    HTML for its centred header and badges - and an <img> whose file is missing
-    renders as a broken image on the front page, which is exactly the kind of
-    thing this is supposed to catch.
+    Both conventions are picked up: Markdown `](target)` and raw HTML `src=` /
+    `href=` attributes, because README.md and docs/index.md both embed images and
+    buttons as HTML. Targets containing Liquid (`{{ ... }}`) are skipped - Jekyll
+    resolves those at build time and there is nothing to check statically.
     """
     body = re.sub(r"```.*?```", "", body, flags=re.S)
     out = re.findall(r"\]\(([^)\s]+)\)", body)
     out += re.findall(r'<(?:img|a|source)\b[^>]*?(?:src|href)="([^"]+)"', body)
-    return out
+    return [t for t in out if "{{" not in t and "{%" not in t]
 
 
 def md_files(base, skip_docs):

@@ -180,6 +180,18 @@ jobs:
           print("frontmatter OK, %d lines" % lines)
           PY
 
+      - name: The Jekyll site must be configured correctly
+        run: |
+          # GitHub Pages does not fail loudly on a bad docs/ config - it serves
+          # something broken, or quietly keeps serving the last good build. This
+          # catches the failures that have actually happened: no default layout
+          # (just-the-docs ships no _config.yml and Jekyll does not merge theme
+          # config, so every page renders bare), a local _layouts/default.html
+          # shadowing the theme, a color_scheme with no matching _sass file, a
+          # page missing front matter, and a logo or favicon that was never
+          # committed.
+          python3 tools/check_docs_site.py
+
       - name: docs/ must be in sync with the reference sources
         run: |
           # docs/ is generated. If someone edits a reference file and forgets to

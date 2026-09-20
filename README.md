@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/button_pay-now_large.svg" alt="Paynow" width="200" height="81">
+  <a href="https://developers.paynow.co.zw">
+    <img src="assets/button_pay-now_large.svg"
+         alt="Paynow Zimbabwe developer documentation" width="200" height="81">
+  </a>
 </p>
 
 <h1 align="center">Paynow Integration Skill</h1>

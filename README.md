@@ -10,7 +10,7 @@
   <img alt="PHP 8.0+" src="https://img.shields.io/badge/PHP-8.0%2B-777BB4?logo=php&logoColor=white">
   <img alt="Node 18+" src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white">
   <img alt="Python 3.8+" src="https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white">
-  <a href="https://github.com/johnmugabe/paynow-integration-skill/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/johnmugabe/paynow-integration-skill/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="https://github.com/67even/paynow-integration-skill/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/67even/paynow-integration-skill/actions/workflows/tests.yml/badge.svg"></a>
 </p>
 
 ---
@@ -61,6 +61,7 @@ from the docs.
 - [Does it actually help?](#does-it-actually-help)
 - [Known upstream documentation defects](#known-upstream-documentation-defects)
 - [Contributing](#contributing)
+- [Author](#author)
 - [License](#license)
 
 ---
@@ -118,7 +119,7 @@ ship Python to integrate Paynow.
 Clone the repo and copy the skill into your skills directory:
 
 ```bash
-git clone https://github.com/johnmugabe/paynow-integration-skill.git
+git clone https://github.com/67even/paynow-integration-skill.git
 cd paynow-integration-skill
 
 # Claude Code (project-scoped)
@@ -455,6 +456,15 @@ cd assets/node-express && node --test                    # 6/6
 
 Never commit a real integration key. `.gitignore` covers `.env` and `*.key`, but the
 check that matters is the one you do before `git add`.
+
+---
+
+## Author
+
+Written and maintained by **[John Mugabe](https://github.com/johnmugabe)** ([@johnmugabe](https://github.com/johnmugabe)).
+
+Every correction in this repository came from reading Paynow's own SDK source
+against its published documentation and recording where the two disagree.
 
 ---
 

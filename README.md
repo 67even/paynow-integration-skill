@@ -10,7 +10,7 @@
   <img alt="PHP 8.0+" src="https://img.shields.io/badge/PHP-8.0%2B-777BB4?logo=php&logoColor=white">
   <img alt="Node 18+" src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white">
   <img alt="Python 3.8+" src="https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white">
-  <img alt="Tests 15/15" src="https://img.shields.io/badge/tests-15%2F15%20passing-success">
+  <a href="https://github.com/johnmugabe/paynow-integration-skill/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/johnmugabe/paynow-integration-skill/actions/workflows/tests.yml/badge.svg"></a>
 </p>
 
 ---
@@ -118,7 +118,7 @@ ship Python to integrate Paynow.
 Clone the repo and copy the skill into your skills directory:
 
 ```bash
-git clone https://github.com/<your-username>/paynow-integration-skill.git
+git clone https://github.com/johnmugabe/paynow-integration-skill.git
 cd paynow-integration-skill
 
 # Claude Code (project-scoped)

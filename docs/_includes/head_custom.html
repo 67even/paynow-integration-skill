@@ -68,6 +68,14 @@
 </script>
 
 {%- if page.url == "/" %}
+{%- comment -%}
+  Search Console reads this only on the property URL it was given, which is
+  this page - so it lives here rather than on all seven. It must stay put:
+  Google re-checks periodically and un-verifies the property if it disappears.
+{%- endcomment -%}
+{%- if site.google_site_verification_token %}
+<meta name="google-site-verification" content="{{ site.google_site_verification_token }}">
+{%- endif %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",

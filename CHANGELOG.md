@@ -34,6 +34,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   against the *rendered* site by a new CI job that builds it with Jekyll.
   Structured data fails silently — a stray comma out of Liquid and Google drops
   the block with nothing visibly wrong — so checking the template is not enough.
+- Google Search Console verification on the entry page. The token sits in
+  `docs/_config.yml`; `check_meta_tags.py` fails the build if the tag ever goes
+  missing, because Google re-checks it and quietly un-verifies the property.
 
 ### Changed
 

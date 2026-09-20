@@ -18,6 +18,10 @@ Checked on every rendered page:
 
 and on the sitemap: every URL has a <lastmod>, and no page is missing from it.
 
+The entry page is checked for the Search Console verification tag when one is
+configured. Google re-checks that tag periodically and un-verifies the property
+if it goes missing, which is silent - Search Console simply stops reporting.
+
 Point it at a Jekyll output directory:
 
     python3 tools/check_meta_tags.py _site
@@ -76,6 +80,24 @@ def check_pages(root):
     return bad, pages, seen
 
 
+def check_verification(root, config_path):
+    """The Search Console token must be on the page the property URL resolves to."""
+    if not os.path.isfile(config_path):
+        return []
+    cfg = io.open(config_path, encoding="utf-8").read()
+    m = re.search(r'^google_site_verification_token:\s*"([^"]+)"\s*$', cfg, re.M)
+    if not m:
+        return []
+    home = os.path.join(root, "index.html")
+    if not os.path.isfile(home):
+        return ["no index.html to carry the Search Console verification tag"]
+    want = '<meta name="google-site-verification" content="%s">' % m.group(1)
+    if want not in head_of(home):
+        return ["the entry page has lost its Search Console verification tag; "
+                "Google re-checks it and un-verifies the property when it goes"]
+    return []
+
+
 def check_sitemap(root, page_paths):
     path = os.path.join(root, "sitemap.xml")
     if not os.path.isfile(path):
@@ -105,9 +127,12 @@ def main():
 
     page_bad, pages, seen = check_pages(root)
     site_bad, n_urls = check_sitemap(root, seen)
+    verify_bad = check_verification(
+        root, os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "docs", "_config.yml"))
 
     print("%d page(s) checked, %d URL(s) in the sitemap" % (pages, n_urls))
-    bad = page_bad + site_bad
+    bad = page_bad + site_bad + verify_bad
     if not bad:
         print("\nevery page carries the tags that decide how it appears in search")
         return 0

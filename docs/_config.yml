@@ -22,6 +22,16 @@ logo: "/assets/images/67even-logo.png"
 author:
   name: John Mugabe
 
+# --- Google Search Console --------------------------------------------------
+# Deliberately NOT jekyll-seo-tag's `webmaster_verifications.google` key: that
+# one emits the tag on every page, and the tag is only ever read on the
+# property URL, which is the entry page. _includes/head_custom.html renders it
+# there. To put it on every page instead, delete this and set
+#   webmaster_verifications:
+#     google: "<token>"
+# which seo-tag handles natively.
+google_site_verification_token: "1J0N9Y8BUH5i51OK_NqAPKYAay-BURoxm9UmJ1d28I8"
+
 # jekyll-seo-tag is rendered by the theme's head; sitemap needs no include.
 plugins:
   - jekyll-seo-tag

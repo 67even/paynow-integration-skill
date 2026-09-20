@@ -1,0 +1,233 @@
+# Node.js & Express
+
+## Contents
+
+- [Install & construct](#install--construct)
+- [The SDK surface — and its two defects](#the-sdk-surface--and-its-two-defects)
+- [Web transaction](#web-transaction)
+- [Mobile money](#mobile-money)
+- [Polling](#polling)
+- [The callback route](#the-callback-route)
+- [Raw client for the methods the SDK skips](#raw-client-for-the-methods-the-sdk-skips)
+- [Node gotchas](#node-gotchas)
+
+Ready-to-adapt files live in `assets/node-express/`.
+
+## Install & construct
+
+```bash
+npm install --save paynow
+```
+
+```js
+const { Paynow } = require("paynow");
+
+const paynow = new Paynow(
+  process.env.PAYNOW_INTEGRATION_ID,
+  process.env.PAYNOW_INTEGRATION_KEY
+);
+
+// URLs are plain properties — set them before send()
+paynow.resultUrl = "https://example.com/paynow/callback";
+paynow.returnUrl = "https://example.com/paynow/return?ref=INV-35";
+```
+
+Omitting `returnUrl` is allowed but means you rely entirely on polling to learn the
+outcome — fine for an API-only flow, bad for a browser checkout.
+
+## The SDK surface — and its two defects
+
+| Member | Type | Notes |
+|---|---|---|
+| `paynow.createPayment(ref, email)` | method | cart builder |
+| `payment.add(name, price)` | method | adds a line |
+| `await paynow.send(payment)` | method | `Promise<InitResponse>` |
+| `await paynow.sendMobile(p, phone, method)` | method | `ecocash` / `onemoney` only |
+| `await paynow.pollTransaction(pollUrl)` | method | see below |
+| `response.success` | **property** | initiation accepted |
+| `response.redirectUrl` | **property** | web only |
+| `response.pollUrl` | **property** | web + mobile |
+| `response.instructions` | **property** | mobile only |
+| `response.error` | **property** | present when `success === false` |
+| `status.status` | **property** | the status word |
+
+Everything on a response is a property. There are no methods to call on it.
+
+### Defect 1 — the docs use `pollTransaction` synchronously
+
+The published quickstart shows `let status = paynow.pollTransaction(pollUrl)`. It performs
+network I/O and returns a promise, so without `await` every member is undefined.
+
+### Defect 2 — `status.paid()` does not exist
+
+The quickstart also shows `if (status.paid())`. The shipped `StatusResponse` exposes only
+`reference`, `amount`, `paynowReference`, `pollUrl`, `status` and `error` — `paid` appears
+nowhere in the package. Calling it throws `TypeError: status.paid is not a function`.
+
+Worse, `pollTransaction()` internally returns `this.parse(response.data)`, which builds an
+**`InitResponse`**, not a `StatusResponse`. So `status`, `pollUrl` and `error` are
+populated but `reference`, `amount` and `paynowReference` come back undefined. Key poll
+results off your own stored reference, never off the response.
+
+```js
+const PAID = new Set(["Paid", "Awaiting Delivery", "Delivered"]);
+const r = await paynow.pollTransaction(pollUrl);
+if (PAID.has(r.status)) { /* fulfil */ }
+```
+
+### TypeScript note
+
+`createPayment(reference: string, authEmail: string)` types `authEmail` as required, so
+the email-less web form the docs show is a compile error even though it works at runtime.
+
+## Web transaction
+
+```js
+const payment = paynow.createPayment(order.reference, authEmailFor(order.email));
+for (const item of order.items) {
+  payment.add(item.name, Number((item.price * item.qty).toFixed(2)));
+}
+
+const response = await paynow.send(payment);
+
+if (!response.success) {
+  console.error("[paynow] init failed:", response.error);
+  return res.status(502).json({ error: "Could not start payment." });
+}
+
+await orders.update(order.id, { pollUrl: response.pollUrl, paymentStatus: "initiated" });
+return res.json({ redirectUrl: response.redirectUrl });
+```
+
+Persist `pollUrl` before responding, not after.
+
+## Mobile money
+
+```js
+const response = await paynow.sendMobile(payment, phone, method); // 'ecocash' | 'onemoney'
+
+if (!response.success) {
+  return res.status(402).json({ error: response.error });  // e.g. "Insufficient balance"
+}
+
+return res.json({
+  reference: order.reference,
+  instructions: response.instructions,   // render verbatim
+});
+```
+
+`sendMobile` failures split two ways and both need handling: insufficient balance fails at
+*initiation* (caught by `success === false`), while a user cancellation initiates fine and
+only fails later via the status update.
+
+## Polling
+
+Poll in a worker on a backoff, never in a tight loop and never inside an HTTP request that
+has to return. Mobile money can take ~30 seconds for the customer to authorise.
+
+```js
+async function awaitPayment(paynow, pollUrl, { timeoutMs = 300_000 } = {}) {
+  const PAID = new Set(["Paid", "Awaiting Delivery", "Delivered"]);
+  const TERMINAL = new Set(["Cancelled", "Refunded", "Disputed"]);
+
+  const deadline = Date.now() + timeoutMs;
+  let delay = 3000;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(Math.round(delay * 1.35), 20_000);
+
+    let r;
+    try {
+      r = await paynow.pollTransaction(pollUrl);
+    } catch (err) {
+      console.warn("[paynow] poll failed, retrying:", err.message);
+      continue;                       // transient — keep going
+    }
+
+    if (PAID.has(r.status)) return { outcome: "paid", status: r.status };
+    if (TERMINAL.has(r.status)) return { outcome: "failed", status: r.status };
+  }
+  return { outcome: "timeout", status: null };
+}
+```
+
+## The callback route
+
+The hash depends on field order, so capture the **raw body** on this route only. Keep
+`express.json()` for everything else.
+
+```js
+app.post("/paynow/callback", express.raw({ type: "*/*" }), async (req, res) => {
+  const fields = PaynowHash.parseResponse(req.body.toString("utf8"));
+
+  if (!hasher.verify(fields)) {
+    console.warn("[paynow] REJECTED callback: bad hash");
+    return res.sendStatus(400);
+  }
+
+  const f = {};
+  for (const [k, v] of fields) f[k.toLowerCase()] = v;
+
+  const order = await orders.findByReference(f.reference);
+  if (!order) return res.sendStatus(200);          // 200 so Paynow stops retrying
+  if (order.fulfilled) return res.sendStatus(200); // idempotent
+
+  if (PAID.has(f.status)) {
+    if (Math.abs(Number(f.amount) - Number(order.total)) > 0.001) {
+      await orders.flagForReview(order.id);
+      return res.sendStatus(200);
+    }
+    await orders.markPaid(order.id, f.paynowreference, f.status);
+    await queue.add("fulfil-order", { orderId: order.id });
+  } else if (TERMINAL.has(f.status)) {
+    await orders.markTerminal(order.id, f.status);
+  } else {
+    await orders.touchStatus(order.id, f.status);  // Created / Sent
+  }
+
+  return res.sendStatus(200);
+});
+```
+
+Why `express.raw` rather than `express.urlencoded`: the parsed object usually preserves
+insertion order in V8, but "usually" is not a property you want your payment verification
+to depend on.
+
+## Raw client for the methods the SDK skips
+
+InnBucks, O'mari, Zimswitch and card tokens have no SDK helper. Build the field `Map`
+deliberately — **insertion order defines the hash**:
+
+```js
+const fields = new Map();
+fields.set("id", this.id);
+fields.set("reference", reference);
+fields.set("amount", Number(amount).toFixed(2));
+fields.set("returnurl", returnUrl);
+fields.set("resulturl", resultUrl);
+fields.set("authemail", authEmail);          // required for Express Checkout
+fields.set("method", method);
+fields.set("merchanttrace", merchantTrace);  // required for vmc/zimswitch, unique per request
+for (const [k, v] of Object.entries(extra)) {
+  if (v != null) fields.set(k, String(v));   // phone, token, …
+}
+fields.set("status", "Message");
+fields.set("hash", this.hasher.generate(fields));
+```
+
+Full client in `assets/node-express/paynow-raw-client.js`, protocol details in
+`raw-http.md`.
+
+## Node gotchas
+
+| Gotcha | Fix |
+|---|---|
+| `pollTransaction` used synchronously as the docs show | `await` it. |
+| `status.paid()` | Doesn't exist — `TypeError`. Compare `status.status`. |
+| Response members called as methods | They're all properties. |
+| `pollTransaction()` resolving an `InitResponse` | `reference`/`amount` are undefined — use your own stored reference. |
+| Body parser not configured for form posts | `express.raw` on the callback route. |
+| Unhandled rejection on network failure | `try/catch` or `.catch()` everywhere. |
+| `returnUrl`/`resultUrl` set after `send()` | Set them before. |
+| `+` not decoded to a space when hand-parsing | Replace `+` before `decodeURIComponent`. |

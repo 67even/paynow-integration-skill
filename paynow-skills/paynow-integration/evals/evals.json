@@ -1,0 +1,171 @@
+{
+  "skill_name": "paynow-integration",
+  "evals": [
+    {
+      "id": 0,
+      "name": "laravel-ecocash-checkout",
+      "prompt": "I'm adding Paynow to my Laravel 11 event ticketing app. Most of my customers pay by EcoCash on their phones, some by card. I need the whole flow wired up: starting the payment, the bit where Paynow tells my server the money came in, and something the front end can poll so the ticket page updates once they've paid. Orders table already exists with reference, total and customer_email. Write me the controller, routes and migration, and tell me anything I need to configure outside the code.",
+      "expected_output": "A Laravel controller with checkout / mobile checkout / callback / return / status actions, routes, a migration adding poll_url and a fulfilment guard, plus config and CSRF-exemption notes. Fulfilment driven only by the hash-verified callback; all three paid states treated as paid.",
+      "files": [],
+      "assertions": [
+        {
+          "id": "paid-states",
+          "text": "Fulfilment is gated on all three paid states (Paid, Awaiting Delivery, Delivered) in executable code, not only in a comment"
+        },
+        {
+          "id": "no-paid-helper",
+          "text": "Does not use the SDK's paid() helper as the fulfilment gate"
+        },
+        {
+          "id": "lowercase-status",
+          "text": "Accounts for the PHP SDK lower-casing status(), i.e. does not compare it against capitalised status words"
+        },
+        {
+          "id": "hash-verified-callback",
+          "text": "Verifies a SHA-512 hash on the callback before acting on it, using a timing-safe comparison"
+        },
+        {
+          "id": "hash-all-fields",
+          "text": "Hashes every field present in arrival order rather than a fixed list of documented fields"
+        },
+        {
+          "id": "raw-body",
+          "text": "Reads the raw request body (not a framework-parsed array) so field order survives for hashing"
+        },
+        {
+          "id": "pollurl-persisted",
+          "text": "Persists the pollUrl against the order before redirecting the customer"
+        },
+        {
+          "id": "poll-stored-url",
+          "text": "Polls the pollUrl stored against the order, never a URL taken from the callback request body"
+        },
+        {
+          "id": "no-fulfil-on-return",
+          "text": "The return route renders state only and does not fulfil, mark paid, or dispatch"
+        },
+        {
+          "id": "idempotent",
+          "text": "Fulfilment is guarded so a repeated callback cannot fulfil twice (atomic conditional update, unique constraint, or row lock)"
+        },
+        {
+          "id": "callback-200-on-unknown",
+          "text": "Returns 2xx for an unknown or already-handled reference rather than 4xx, so Paynow does not retry ten times"
+        },
+        {
+          "id": "csrf-exemption",
+          "text": "Flags that the callback route must be exempt from CSRF"
+        },
+        {
+          "id": "testmode-authemail",
+          "text": "Makes authemail test-mode aware rather than always the customer's email"
+        },
+        {
+          "id": "amount-reconciled",
+          "text": "Reconciles the callback amount against the stored order total before fulfilling"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "debug-paid-not-fulfilled",
+      "prompt": "Something's wrong with our Paynow checkout and I can't work out what. Customers are definitely paying - I can see the transactions in the Paynow dashboard marked as paid - but a chunk of them never get their tickets. Maybe one in five? And separately someone in support swears a customer got tickets without paying but I can't reproduce it. Here's the controller. What's going on?",
+      "expected_output": "Identifies paid() missing Awaiting Delivery/Delivered as the cause of the unfulfilled orders, fulfilment on the return route as the cause of the free tickets, and the missing hash verification as a third (unreported) hole. Supplies corrected code.",
+      "files": [
+        "PaymentController.php"
+      ],
+      "assertions": [
+        {
+          "id": "diagnoses-paid-helper",
+          "text": "Names paid() missing Awaiting Delivery/Delivered as THE cause of the unfulfilled paid orders, unhedged - not as a 'may be' possibility or a minor secondary item"
+        },
+        {
+          "id": "diagnoses-return-fulfilment",
+          "text": "Names fulfilment in the return route as THE cause of tickets issued without payment"
+        },
+        {
+          "id": "diagnoses-missing-hash",
+          "text": "Flags that the callback never verifies the hash, so a forged POST is accepted"
+        },
+        {
+          "id": "diagnoses-pollurl-from-body",
+          "text": "Flags that the callback polls a URL taken from the request body (an attacker-controlled endpoint / SSRF)"
+        },
+        {
+          "id": "supplies-fix",
+          "text": "Supplies corrected code rather than only describing the problems"
+        },
+        {
+          "id": "fix-is-correct",
+          "text": "The corrected code gates on all three paid states, verifies the hash, and does not fulfil in the return route"
+        },
+        {
+          "id": "fix-is-idempotent",
+          "text": "The corrected code guards against a repeated callback fulfilling twice"
+        },
+        {
+          "id": "no-false-alarms",
+          "text": "Does not assert a confident specific defect that is absent from the file and would send the user down a wrong path"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "node-innbucks-express-checkout",
+      "prompt": "We're on Node/Express and already take EcoCash through the paynow npm package. Now we need to add InnBucks. From what I can tell the SDK doesn't do InnBucks so I think we have to hit the API directly? Need the request, whatever we show the customer, and how we know when they've actually paid.",
+      "expected_output": "A raw Express Checkout client posting method=innbucks with a unique merchanttrace, ordered fields for hashing, response hash verification, authorizationcode + authorizationexpires shown to the customer, a locally-generated QR, deep link handling, and polling that does not call status.paid().",
+      "files": [],
+      "assertions": [
+        {
+          "id": "awaiting-delivery-paid",
+          "text": "Treats Awaiting Delivery (and Delivered) as paid, not only the literal 'Paid' - absence of paid() alone does not satisfy this"
+        },
+        {
+          "id": "no-status-paid",
+          "text": "Does not call status.paid(), which does not exist in the Node package"
+        },
+        {
+          "id": "awaits-poll",
+          "text": "Awaits the polling call rather than using it synchronously"
+        },
+        {
+          "id": "merchanttrace",
+          "text": "Sends a unique merchanttrace in the Express Checkout request body and stores it"
+        },
+        {
+          "id": "ordered-fields",
+          "text": "The same ordered structure produces both the hash and the request body, so they cannot diverge"
+        },
+        {
+          "id": "verifies-response-hash",
+          "text": "Verifies the hash on the Paynow response to the Express Checkout request"
+        },
+        {
+          "id": "verifies-callback-hash",
+          "text": "Verifies the hash on the inbound status-update callback before acting on it"
+        },
+        {
+          "id": "idempotent-fulfilment",
+          "text": "Fulfilment is guarded so a repeated callback or a poll racing the callback cannot fulfil twice"
+        },
+        {
+          "id": "authcode-and-expiry",
+          "text": "Surfaces both authorizationcode and authorizationexpires to the customer"
+        },
+        {
+          "id": "expiry-format",
+          "text": "Uses the documented d-MMM-yyyy HH:mm format for authorizationexpires, or does not expire the code client-side on a guessed timezone"
+        },
+        {
+          "id": "local-qr",
+          "text": "Generates a QR code locally rather than via a third-party chart URL, and a QR is actually produced"
+        },
+        {
+          "id": "form-urlencoded",
+          "text": "Posts application/x-www-form-urlencoded and parses the query-string response rather than treating it as JSON"
+        }
+      ]
+    }
+  ],
+  "notes": "Assertions tightened 2026-09-20 after the first grading pass flagged several as satisfiable by prose or by absence. Added the checks that decide whether a deployed integration is actually safe: polling the stored poll URL rather than one supplied in the request, idempotent fulfilment, and hashing every field in arrival order."
+}

@@ -1,0 +1,261 @@
+# Hashing: generate & validate
+
+Every message to and from Paynow carries a `hash`. Verifying inbound hashes is what stops
+a stranger POSTing a fake "Paid" to your callback URL, which is publicly reachable by
+definition. Generating them correctly is what stops Paynow rejecting your requests.
+
+Almost every "Paynow isn't working" report is a hashing bug. Build the helper first, prove
+it against the two fixtures below, and that whole class of failure disappears.
+
+## Contents
+
+- [The API algorithm](#the-api-algorithm)
+- [Fixture 1 — outbound](#fixture-1--outbound)
+- [Fixture 2 — inbound](#fixture-2--inbound)
+- [PHP implementation](#php-implementation)
+- [Node.js implementation](#nodejs-implementation)
+- [The other algorithm: link/button notifications](#the-other-algorithm-linkbutton-notifications)
+- [Pitfalls](#pitfalls)
+
+## The API algorithm
+
+1. Concatenate the **values** of every field in the message, in order, **excluding** the
+   `hash` field itself. Use raw values:
+   - Parsing a response string → **URL-decode each value first**.
+   - Reading a form POST → your framework already decoded them.
+   - Generating an outbound hash → use raw values; URL-encode only when building the body.
+2. Append your **Integration Key**, **lower-cased**.
+3. UTF-8 encode.
+4. **SHA-512**, output as **UPPERCASE hexadecimal**.
+
+> **Lower-case the key.** Both official SDKs do it — the PHP SDK in its
+> constructor and again in `initiateTransaction()`, the Node SDK inside
+> `generateHash()` — so a key that arrives upper-cased still hashes correctly.
+> Every key Paynow publishes is already lower-case, which is exactly why this is
+> easy to miss: omit it and your helper passes all the documented fixtures, then
+> fails in production the day a merchant's key comes back upper-cased.
+
+Two things make this go wrong more often than the algorithm itself:
+
+**Order.** The digest depends on the order fields arrived in, so parse into an ordered
+structure (PHP ordered array, JS `Map`) and read the **raw request body** rather than a
+framework-parsed object. PHP's `parse_str()` is particularly bad here — it mangles keys
+containing dots or spaces.
+
+**Completeness.** Hash *every* value present, not a documented field list. Paynow returns
+fields the docs don't list — `paynowreference` appears in initiate responses but not in
+the documented response table — and they are part of the digest. Implementations written
+against the documented four fields fail on every real transaction, and the symptom looks
+like a wrong key.
+
+## Fixture 1 — outbound
+
+Integration key `3e9fed89-60e1-4ce5-ab6e-6b1eb2d4f977`, message:
+
+```
+id=1201
+reference=TEST REF
+amount=99.99
+additionalinfo=A test ticket transaction
+returnurl=http://www.google.com/search?q=returnurl
+resulturl=http://www.google.com/search?q=resulturl
+status=Message
+```
+
+Joined values + key:
+
+```
+1201TEST REF99.99A test ticket transactionhttp://www.google.com/search?q=returnurlhttp://www.google.com/search?q=resulturlMessage3e9fed89-60e1-4ce5-ab6e-6b1eb2d4f977
+```
+
+SHA-512, uppercase:
+
+```
+2A033FC38798D913D42ECB786B9B19645ADEDBDE788862032F1BD82CF3B92DEF84F316385D5B40DBB35F1A4FD7D5BFE73835174136463CDD48C9366B0749C689
+```
+
+## Fixture 2 — inbound
+
+Response (note `paynowreference`, which the documented response table omits):
+
+```
+status=Ok&browserurl=https%3a%2f%2fstaging.paynow.co.zw%2fPayment%2fConfirmPayment%2f9510&pollurl=https%3a%2f%2fstaging.paynow.co.zw%2fInterface%2fCheckPayment%2f%3fguid%3dc7ed41da-0159-46da-b428-69549f770413&paynowreference=9510&hash=750DD0B0DF374678707BB5AF915AF81C228B9058AD57BB7120569EC68BBB9C2EFC1B26C6375D2BC562AC909B3CD6B2AF1D42E1A5E479FFAC8F4FB3FDCE71DF4D
+```
+
+Values joined after URL-decoding, excluding `hash`:
+
+```
+Okhttps://staging.paynow.co.zw/Payment/ConfirmPayment/9510https://staging.paynow.co.zw/Interface/CheckPayment/?guid=c7ed41da-0159-46da-b428-69549f7704139510
+```
+
+Append the same key → SHA-512 → uppercase gives back the `hash` in the message.
+
+Both fixtures are wired into `scripts/paynow_hash.py selftest`. Run it after writing a
+helper in any language and port the same two cases into the project's own test suite.
+
+## PHP implementation
+
+```php
+<?php
+
+final class PaynowHash
+{
+    public function __construct(private string $integrationKey)
+    {
+        $this->integrationKey = strtolower($integrationKey);   // as both SDKs do
+    }
+
+    /** $values must be in message order; 'hash' is ignored if present. */
+    public function generate(array $values): string
+    {
+        $concat = '';
+        foreach ($values as $key => $value) {
+            if (strtoupper((string) $key) === 'HASH') {
+                continue;
+            }
+            $concat .= $value;
+        }
+        return strtoupper(hash('sha512', $concat . $this->integrationKey));
+    }
+
+    /** $values: already URL-decoded key => value pairs, in arrival order. */
+    public function verify(array $values): bool
+    {
+        $received = null;
+        foreach ($values as $key => $value) {
+            if (strtoupper((string) $key) === 'HASH') {
+                $received = $value;
+            }
+        }
+        if ($received === null) {
+            return false;
+        }
+        return hash_equals($this->generate($values), strtoupper($received));
+    }
+
+    /**
+     * Parse "a=1&b=2" into an ORDERED, URL-decoded array.
+     * Do NOT use parse_str() — it mangles keys and loses ordering guarantees.
+     */
+    public static function parseResponse(string $body): array
+    {
+        $out = [];
+        foreach (explode('&', trim($body)) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            $parts = explode('=', $pair, 2);
+            $out[urldecode($parts[0])] = isset($parts[1]) ? urldecode($parts[1]) : '';
+        }
+        return $out;
+    }
+}
+```
+
+> The PHP SDK verifies response hashes itself on `send()`, `sendMobile()` and
+> `pollTransaction()`, throwing `HashMismatchException`. So on an SDK integration you only
+> need a hand-rolled helper for the `resulturl` callback.
+
+## Node.js implementation
+
+```js
+const crypto = require("crypto");
+
+class PaynowHash {
+  constructor(integrationKey) {
+    this.integrationKey = String(integrationKey).toLowerCase();   // as both SDKs do
+  }
+
+  /** values: ordered object or Map; 'hash' excluded. */
+  generate(values) {
+    const entries = values instanceof Map ? [...values] : Object.entries(values);
+    const concat =
+      entries
+        .filter(([k]) => k.toUpperCase() !== "HASH")
+        .map(([, v]) => String(v))
+        .join("") + this.integrationKey;
+
+    return crypto.createHash("sha512").update(concat, "utf8").digest("hex").toUpperCase();
+  }
+
+  verify(values) {
+    const entries = values instanceof Map ? [...values] : Object.entries(values);
+    const found = entries.find(([k]) => k.toUpperCase() === "HASH");
+    if (!found) return false;
+
+    const expected = Buffer.from(this.generate(values));
+    const actual = Buffer.from(String(found[1]).toUpperCase());
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  }
+
+  /** Parse "a=1&b=2" into an ORDERED Map of decoded values. */
+  static parseResponse(body) {
+    const map = new Map();
+    for (const pair of String(body).trim().split("&")) {
+      if (!pair) continue;
+      const i = pair.indexOf("=");
+      const k = decodeURIComponent((i === -1 ? pair : pair.slice(0, i)).replace(/\+/g, " "));
+      const v = i === -1 ? "" : decodeURIComponent(pair.slice(i + 1).replace(/\+/g, " "));
+      map.set(k, v);
+    }
+    return map;
+  }
+}
+
+module.exports = { PaynowHash };
+```
+
+A `Map` rather than a plain object because it preserves insertion order for every key
+shape, including numeric-looking keys, which plain objects reorder.
+
+## The other algorithm: link/button notifications
+
+Paynow's no-code **Links & Buttons** integrations (Custom Button Templates) POST to a
+Notification URL, and those use a **different** digest: **key + value**, not values alone.
+
+1. Concatenate `key . value` for each field, no separator, in posted order, excluding
+   `Hash` itself.
+2. Append the Integration Key (from *edit* on the template in Paynow).
+3. UTF-8 → SHA-512 → uppercase hex.
+
+```php
+function verifyPaynowNotification(array $post, string $integrationKey): bool
+{
+    $concat = '';
+    $received = null;
+
+    foreach ($post as $key => $value) {
+        if (strcasecmp($key, 'Hash') === 0) {
+            $received = $value;
+            continue;
+        }
+        $concat .= $key . $value;      // key + value, unlike the API hash
+    }
+    $integrationKey = strtolower($integrationKey);
+    if ($received === null) {
+        return false;
+    }
+    return hash_equals(strtoupper(hash('sha512', $concat . $integrationKey)), strtoupper($received));
+}
+```
+
+Paynow's wording never explicitly says to exclude `Hash`; excluding it is the working
+interpretation and matches the API convention.
+
+Notification posts also carry both `Transaction_Amount` and `Amount_Paid`, which differ
+when the customer absorbs Paynow's fee. Reconcile against **`Transaction_Amount`**. Extra
+template fields arrive with spaces in their names converted to underscores.
+
+## Pitfalls
+
+| Pitfall | Fix |
+|---|---|
+| Hashing **encoded** values on outbound messages | Join raw values; encode only when building the body. |
+| Forgetting to **decode** inbound values before hashing | URL-decode each value first. |
+| Hashing a fixed field list | Hash every value present, in arrival order. |
+| Field **order** lost by the HTTP client or `parse_str()` | Ordered array / `Map`, parsed from the raw body. |
+| Lowercase hex | `strtoupper()` / `.toUpperCase()`. |
+| `+` in a query string not decoded to a space | Replace `+` before `decodeURIComponent`. |
+| Including `hash` in the concatenation | Exclude it. |
+| Comparing with `==` / `===` | `hash_equals` / `crypto.timingSafeEqual`. |
+| Using the API algorithm on a button notification | That one is key+value — see above. |

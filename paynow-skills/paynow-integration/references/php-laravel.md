@@ -1,0 +1,232 @@
+# PHP & Laravel
+
+## Contents
+
+- [Install & construct](#install--construct)
+- [The SDK surface](#the-sdk-surface)
+- [Exceptions the SDK throws](#exceptions-the-sdk-throws)
+- [Web transaction](#web-transaction)
+- [Mobile money](#mobile-money)
+- [Polling](#polling)
+- [The callback handler](#the-callback-handler)
+- [Laravel wiring](#laravel-wiring)
+- [PHP gotchas](#php-gotchas)
+
+Ready-to-adapt files live in `assets/php-laravel/`.
+
+## Install & construct
+
+```bash
+composer require paynow/php-sdk
+```
+
+Requires the **cURL** extension. The SDK supports PHP 5.6+, but the code in this skill
+uses PHP 8.0+ syntax (promoted properties, named arguments).
+
+```php
+use Paynow\Payments\Paynow;
+
+$paynow = new Paynow(
+    getenv('PAYNOW_INTEGRATION_ID'),
+    getenv('PAYNOW_INTEGRATION_KEY'),
+    'https://example.com/paynow/return?ref=INV-35',   // returnurl — browser lands here
+    'https://example.com/paynow/callback'             // resulturl — server callback
+);
+```
+
+> The snippet published on the Paynow docs site is **missing the comma** between the two
+> URLs and does not parse. If a user pastes a constructor that won't compile, that is why.
+
+URLs can also be set after construction, which is how you get the order reference into the
+return URL when the reference isn't known at construction time:
+
+```php
+$paynow->setReturnUrl('https://example.com/paynow/return?ref=' . urlencode($orderRef));
+$paynow->setResultUrl('https://example.com/paynow/callback');
+```
+
+## The SDK surface
+
+| Method | On | Returns |
+|---|---|---|
+| `createPayment($ref, $email)` | `Paynow` | `FluentBuilder` — the cart |
+| `$payment->add($name, $price)` | builder | adds a line; total is the sum |
+| `send($payment)` | `Paynow` | init response (web) |
+| `sendMobile($payment, $phone, $method)` | `Paynow` | init response (`ecocash` / `onemoney` only) |
+| `pollTransaction($pollUrl)` | `Paynow` | status response |
+| `processStatusUpdate()` | `Paynow` | status response, read from `$_POST`, hash verified |
+| `success()` | init response | `bool` — **initiation** accepted, *not* "customer paid" |
+| `redirectUrl()` | web init | Paynow URL to redirect to |
+| `pollUrl()` | web + mobile init | persist this |
+| `instructions()` | mobile init | human-readable USSD guidance — render it verbatim |
+| `errors()` | init response | space-joined **string**; `errors(false)` gives the array |
+| `status()` | poll/status | status word, **lower-cased by the SDK** |
+| `paid()` | poll/status | ⚠️ **true only for literal `Paid`** — see below |
+| `amount()`, `reference()`, `paynowReference()` | poll/status | as named |
+
+### ⚠️ `paid()` and `status()`
+
+`paid()` is implemented as `return $this->status() === 'paid';`. It is **false for
+`Awaiting Delivery` and `Delivered`**, both of which are fully paid. Using it as the
+fulfilment gate silently drops orders on any integration using delivery confirmation.
+
+`status()` **lower-cases** its return, so comparing against the capitalised status words
+from the API docs never matches. Compare lower-cased:
+
+```php
+$PAID = ['paid', 'awaiting delivery', 'delivered'];
+if (in_array($status->status(), $PAID, true)) { /* fulfil */ }
+```
+
+## Exceptions the SDK throws
+
+`send()`, `sendMobile()` and `pollTransaction()` **throw** rather than returning a failed
+response. `success()` is only reached when nothing was thrown — so a bare
+`if ($response->success())` with no `try` will 500 on the most common misconfiguration of
+all, a wrong or not-yet-live integration ID.
+
+| Exception | Namespace | Raised when |
+|---|---|---|
+| `InvalidIntegrationException` | `Paynow\Payments` | Paynow replied `Invalid id.` |
+| `HashMismatchException` | `Paynow\Payments` | Response hash failed. **Never continue.** |
+| `ConnectionException` | `Paynow\Http` | Transport failure. Safe to retry. |
+| `EmptyCartException` | `Paynow\Payments` | `send()` with no items added. |
+| `EmptyTransactionReferenceException` | `Paynow\Payments` | Empty reference. |
+| `InvalidUrlException` | `Paynow\Payments` | `returnurl`/`resulturl` not a valid URL. |
+
+Useful consequence: because the SDK raises `HashMismatchException` itself, hash
+verification is already covered on those three calls. Only the `resulturl` callback needs
+a hand-rolled check.
+
+## Web transaction
+
+```php
+$payment = $paynow->createPayment('INV-35', $authEmail);
+$payment->add('Bananas', 2.50);
+$payment->add('Apples',  3.40);
+
+try {
+    $response = $paynow->send($payment);
+} catch (\Paynow\Payments\InvalidIntegrationException $e) {
+    error_log('[paynow] invalid integration id');
+    throw $e;
+} catch (\Paynow\Payments\HashMismatchException $e) {
+    error_log('[paynow] RESPONSE HASH MISMATCH - do not redirect');
+    throw $e;
+} catch (\Paynow\Http\ConnectionException $e) {
+    error_log('[paynow] connection failed: ' . $e->getMessage());
+    throw $e;
+}
+
+if (! $response->success()) {
+    error_log('Paynow init failed: ' . $response->errors());   // a string, not an array
+    // surface a retryable error to the customer
+}
+
+$pollUrl = $response->pollUrl();
+$orderRepo->attachPollUrl($orderRef, $pollUrl);   // persist BEFORE redirecting
+
+header('Location: ' . $response->redirectUrl());
+exit;
+```
+
+The reference must be unique per transaction on your side — invoice number, order id, UUID.
+
+## Mobile money
+
+Only `ecocash` and `onemoney` go through the SDK helper. No redirect; the customer gets a
+USSD prompt.
+
+```php
+$response = $paynow->sendMobile($payment, '0771111111', 'ecocash');
+
+if ($response->success()) {
+    $pollUrl      = $response->pollUrl();       // persist
+    $instructions = $response->instructions();  // render verbatim while polling
+}
+```
+
+For InnBucks, O'mari, Zimswitch and card tokens the SDK has no helper — use the raw HTTP
+path in `raw-http.md`.
+
+## Polling
+
+```php
+$status = $paynow->pollTransaction($pollUrl);
+
+$PAID = ['paid', 'awaiting delivery', 'delivered'];   // status() is lower-cased
+if (in_array($status->status(), $PAID, true)) {
+    // fulfil, idempotently
+}
+```
+
+## The callback handler
+
+Two options. Both are fine; the difference is where the field order comes from.
+
+**SDK helper** — reads `$_POST`:
+
+```php
+try {
+    $status = $paynow->processStatusUpdate();
+} catch (\Paynow\Payments\HashMismatchException $e) {
+    http_response_code(400);
+    exit;
+}
+```
+
+**Raw body** — preserves Paynow's exact field order with no assumptions about PHP's array
+handling. This is what `assets/php-laravel/` uses, and what to prefer when a hash mismatch
+is the thing being debugged:
+
+```php
+$raw    = file_get_contents('php://input');
+$fields = PaynowHash::parseResponse($raw);      // ordered, URL-decoded
+
+if (! $hasher->verify($fields)) {
+    error_log('[paynow] REJECTED callback: bad hash');
+    http_response_code(400);
+    exit;
+}
+```
+
+Then, in order: look up the order, return `200` if already fulfilled (idempotency),
+reconcile the amount against your stored total, optionally confirm by polling, mark paid,
+queue the fulfilment job, return `200`. Unknown references get logged and a `200` — a
+`4xx` just makes Paynow retry ten times.
+
+## Laravel wiring
+
+`assets/php-laravel/` contains a working set:
+
+| File | Purpose |
+|---|---|
+| `PaynowHash.php` | Hash helper + ordered response parser |
+| `PaynowGateway.php` | Service wrapping the SDK; the only place credentials are read |
+| `PaynowController.php` | `checkout`, `callback`, `return`, `status` actions |
+| `config-services-paynow.php` | Snippet for `config/services.php` |
+| `routes-web.php` | Route definitions |
+| `migration_add_paynow_to_orders.php` | `poll_url`, `paynow_reference`, `payment_status`, `merchant_trace` |
+
+Three things to wire up that are easy to miss:
+
+1. **Exempt the callback route from CSRF.** In Laravel 11+ that's
+   `$middleware->validateCsrfTokens(except: ['paynow/callback'])` in `bootstrap/app.php`;
+   in 10 and earlier it's the `$except` array in `VerifyCsrfToken`. Without this the
+   callback is silently rejected and nothing is ever fulfilled.
+2. **Bind the return route to a reference** — `route('paynow.return', ['ref' => $ref])` —
+   so the return page can render the right order without trusting anything Paynow sends.
+3. **Test-mode `authemail`.** Make it config-driven (see below), not the customer's email.
+
+## PHP gotchas
+
+| Gotcha | Fix |
+|---|---|
+| Docs constructor missing a comma between the URLs | Add it. |
+| `send()` throws instead of returning `success() === false` | Wrap in `try/catch`. |
+| `$status->paid()` used as the fulfilment gate | Matches only `Paid`. Compare `status()` against the lower-cased set. |
+| `errors()` treated as an array | It's a space-joined string; `errors(false)` gives the array. |
+| `parse_str()` mangling keys and order | Use the ordered splitter in `hashing.md`. |
+| Floats formatted with locale separators | `number_format($n, 2, '.', '')`. |
+| CSRF middleware eating the callback | Exempt the route. |
+| cURL extension missing | The SDK requires `ext-curl`. |

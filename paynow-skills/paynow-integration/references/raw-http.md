@@ -1,0 +1,236 @@
+# Raw HTTP API reference
+
+Use this for any language without an official SDK (Python, Go, Ruby, Elixir…), for the
+Express Checkout methods the PHP and Node SDKs don't wrap — InnBucks, O'mari, Zimswitch,
+card tokens — and when debugging what an SDK is actually sending.
+
+Paynow publishes five official SDKs: PHP, Node.JS, C#/.NET, Python and Java. Check for
+one before hand-rolling.
+
+## Contents
+
+- [Transport rules](#transport-rules)
+- [Endpoints](#endpoints)
+- [Initiate a transaction](#initiate-a-transaction)
+- [Mobile money](#mobile-money)
+- [Express Checkout](#express-checkout)
+- [Passenger ticket transactions](#passenger-ticket-transactions)
+- [Status update callback](#status-update-callback)
+- [Polling](#polling)
+- [Trace](#trace)
+
+## Transport rules
+
+- All merchant→Paynow calls are **HTTP POST**.
+- Body **URL-encoded**, header `Content-Type: application/x-www-form-urlencoded`.
+- Responses are URL-encoded key/value strings, **not JSON**.
+- Security material never appears in client-visible pages or URLs. Store the Integration
+  Key encrypted or outside the main application database.
+
+## Endpoints
+
+| Purpose | Method | URL |
+|---|---|---|
+| Initiate web transaction | POST | `https://www.paynow.co.zw/interface/initiatetransaction` |
+| Initiate Express Checkout / mobile money | POST | `https://www.paynow.co.zw/interface/remotetransaction` |
+| Initiate passenger (air) ticket transaction | POST | `https://www.paynow.co.zw/interface/initiatetickettransaction` |
+| Poll transaction status | POST (empty body) | the `pollurl` returned to you |
+| Trace by merchant reference | POST | `https://www.paynow.co.zw/interface/trace` |
+| Submit O'mari OTP | POST | the `remoteotpurl` returned to you |
+
+## Initiate a transaction
+
+`POST /interface/initiatetransaction`
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | Integer | Your Integration ID. |
+| `reference` | String | Your unique transaction reference. |
+| `amount` | Decimal | Final amount, two decimals, **no currency symbol**. |
+| `additionalinfo` | String | Extra text shown to the customer. Never confidential data. *(optional)* |
+| `returnurl` | String | Where the browser is sent afterwards. Include enough to identify the transaction. |
+| `resulturl` | String | Where Paynow POSTs status updates. |
+| `authemail` | String | Auto-logs the customer in. **Required for Express Checkout.** *(optional otherwise)* |
+| `authphone` | String | Pre-fills the customer's mobile number. *(optional)* |
+| `authname` | String | Pre-fills the customer's name. *(optional)* |
+| `tokenize` | Boolean | Return a reusable card token in the status update. Permissioned — apply via `support@paynow.co.zw`. *(optional)* |
+| `merchanttrace` | String | Unique per merchant, ≤32 chars. Lets you recover a transaction after a timeout. *(optional, but send it)* |
+| `status` | String | Literal `Message`. |
+| `hash` | String | See `hashing.md`. |
+
+**Success response**
+
+```
+Status=Ok&BrowserUrl=http%3a%2f%2f...&PollUrl=http%3a%2f%2f...&Hash=8614C21D...
+```
+
+`status` = `Ok`, plus `browserurl`, `pollurl`, `hash` — **and often `paynowreference`,
+which the official table omits but which is inside the digest**. Verify the hash over
+every returned value before redirecting the customer anywhere.
+
+**Error response**
+
+```
+Status=Error&Error=Invalid+amount+field
+```
+
+## Mobile money
+
+`POST /interface/remotetransaction`, same fields as above plus:
+
+| Field | Description |
+|---|---|
+| `phone` | Wallet subscriber number to debit. |
+| `method` | `ecocash` or `onemoney`. |
+
+A USSD session is pushed to the handset asking for the wallet PIN. EcoCash works with
+Econet numbers, OneMoney with NetOne numbers. The method must be enabled on the
+integration in the Paynow dashboard or initiation fails with an error saying exactly that.
+
+## Express Checkout
+
+`POST /interface/remotetransaction`. Captures the payment method inside your application
+and completes payment **without redirecting**.
+
+Methods: `zimswitch`, `vmc` (Visa/Mastercard), `ecocash`, `onemoney`, `innbucks`, `omari`.
+
+| Field | Required for | Description |
+|---|---|---|
+| `method` | all | One of the six above. |
+| `phone` | mobile money | Wallet subscriber number. |
+| `token` | vmc / zimswitch | Token from a previous tokenised transaction; enables recurring billing with no cardholder input. |
+| `merchanttrace` | vmc / zimswitch | **Unique per request.** Prevents duplicate debits on timeout. |
+
+`authemail` is required for all Express Checkout.
+
+### InnBucks
+
+The response carries `authorizationcode` and `authorizationexpires`. Show both to the
+customer.
+
+`authorizationexpires` is documented as **`d-MMM-yyyy HH:mm`** — e.g. `20-Sep-2026 14:35`
+— verified against the Express Checkout page on 20 Sep 2026. **No timezone is specified**,
+and Paynow does not say which one it means. So parse the format as documented, but do not
+expire a code client-side from a guessed UTC offset: if you assume the wrong zone you kill
+live payment codes hours early, which is the worst failure mode available here. Show the
+string to the customer, and let Paynow decide when the code is actually dead.
+
+Render the code as a **QR code generated locally** — don't hand a payment code to a
+third-party chart API, and Google's Image Charts endpoint that older examples use is
+deprecated. `npm install qrcode` / `composer require endroid/qr-code`.
+
+Offer a deep link alongside the QR. Two schemes are in circulation and they disagree:
+
+```
+# PRIMARY  — what the paynow npm package (v2.2.2) builds
+schinn.wbpycode://innbucks.co.zw?pymInnCode=<authorizationcode>
+
+# FALLBACK — what the developer hub documents
+com.innbucks.customer://purchase?paymentToken=<authorizationcode>
+```
+
+On the Node SDK, prefer `response.innbucks_info?.[0]?.deep_link_url` over building either
+string. Keep the QR as the primary path in the UI — it works regardless of which scheme
+the installed app registered.
+
+### O'mari
+
+Initiating sends an OTP by SMS. The response carries `otpreference` (display it) and
+`remoteotpurl`. Complete with `POST <remoteotpurl>`:
+
+```
+id=12345&otp=012345&status=Message&hash=8614C21D...
+```
+
+Success returns a normal status update payload; failure returns
+`status=Error&error=Invalid+OTP`. After **five failed attempts** the transaction is
+cancelled and must be re-initiated — surface the attempt count in your UI.
+
+### Card tokens
+
+Token transactions are **re-tokenised on every charge** and the new token comes back in
+the status update. Overwrite the stored token each time or recurring billing stops
+working. Tokens last up to six months from issue but never beyond the card's own expiry:
+a token issued 3 March 2019 on a card expiring end of April 2019 expires **30 April
+2019**, not 3 September.
+
+## Passenger ticket transactions
+
+`POST /interface/initiatetickettransaction` — for airlines and travel agents, so airline
+addendum data travels with the payment for scheme compliance and fraud scoring. Amount is
+**in USD**.
+
+Beyond the standard fields: `primaryticketnumber`, `passengerfirstname`,
+`passengerlastname`, `passengerid`, `passengerstatus`, `passengertype`,
+`firstdeparturelocationcode`, `firstarrivallocationcode`, `pnrnumber`, `officeiatanumber`,
+`ordernumber`, `placeofissue`, `departuredate` (`yyyymmdd`), `departuretime`
+(`HH:mm "GMT"zzz`), `arrivaldate`, `arrivaltime`, `journeytype` (`one way` / `round
+trip`), `completeroute` (`CPT-JNB:JNB-NBO`).
+
+Passenger types: `ADT` adult · `CNN` child · `INF` infant · `YTH` youth · `STU` student ·
+`SCR` senior citizen · `MIL` military.
+
+Status updates behave identically, and also return payment-instrument detail.
+
+## Status update callback
+
+Paynow POSTs to your `resulturl` whenever a transaction's status changes.
+
+| Field | Description |
+|---|---|
+| `reference` | Your merchant reference. |
+| `amount` | Final amount, two decimals. |
+| `paynowreference` | Paynow's own reference. |
+| `pollurl` | URL to poll for current status. |
+| `status` | One of the status words below. |
+| `hash` | Verify it. |
+
+Tokenisation fields, when permitted: `token`, `tokenexpiry` (`31-Dec-2027`).
+
+Payment-instrument fields, when enabled and **only for successful payments**:
+`paymentchannel`, `paymentinstrument` (masked), `paymentinstrumentname`,
+`paymentinstrumentnationality` (`Domestic`/`Foreign`), `paymentchannelreference`,
+`paymentchanneleci`, `paymentfraudscore`, `paymentfrauddecision`
+(`Issue` / `Request Manual Review` / `Reject`).
+
+### Status vocabulary
+
+| Group | Statuses | Meaning |
+|---|---|---|
+| **Money good** | `Paid`, `Awaiting Delivery`, `Delivered` | All three mean the customer paid. `Awaiting Delivery` is held in suspense until you confirm delivery; `Delivered` is inside the 24-hour confirmation window. |
+| In flight | `Created`, `Sent` | Created in Paynow / passed upstream. Not paid. |
+| Terminal | `Cancelled`, `Disputed`, `Refunded` | Cancelled cannot be resumed — recreate. Disputed holds funds pending resolution. |
+| Trace only | `NotFound` | Returned by `/interface/trace`. |
+
+Treating all three "money good" states as paid is your job — the SDK helpers get it wrong.
+See the main SKILL.md, rule 2.
+
+### Retry behaviour
+
+No specific response body is required, but if your endpoint returns an HTTP error Paynow
+retries **up to ten times** before giving up. Return `200` quickly and do heavy work
+asynchronously; make the handler idempotent because the same update legitimately arrives
+more than once.
+
+## Polling
+
+Empty **POST** to the `pollurl`. The reply has the same shape as a status update.
+
+Paynow asks you to poll in two cases: confirming an important status update, and before
+deleting old unpaid transactions. In practice you also poll while waiting on a mobile
+money USSD authorisation — do that on a backoff in a worker, never a tight loop inside an
+HTTP request, and never expose the poll URL to the browser.
+
+## Trace
+
+If you sent an Express Checkout request and never saw the response — timeout, crash,
+network drop — you have no `pollurl`. `merchanttrace` is the way back.
+
+`POST /interface/trace` with `id`, `merchanttrace`, `status=Message`, `hash`.
+
+- **Found** → a standard status update message.
+- **Not found** → `status=NotFound&hash=...`
+- **Error** → `status=Error&error=Trace+failed`
+
+A trace *error* does **not** prove the transaction never existed. Retry before concluding
+anything, and never auto-refund or re-charge off one.

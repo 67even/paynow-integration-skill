@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+# Working artefacts — not part of the published skill
+# ---------------------------------------------------------------------------
+Claude outputs/
+Reviews/
+
+# Eval workspace: generated run outputs, gradings, benchmarks and review pages
+paynow-integration-workspace/
+*-workspace/
+paynow-skill-review.html
+feedback.json
+
+# Packaged skill bundle — rebuild it with scripts/package_skill.py, don't commit binaries
+*.skill
+
+# ---------------------------------------------------------------------------
+# Secrets — the Paynow integration key must never reach version control
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!env.example
+*.key
+*.pem
+secrets.json
+
+# ---------------------------------------------------------------------------
+# Language / tooling noise
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+vendor/
+composer.lock
+.phpunit.result.cache
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

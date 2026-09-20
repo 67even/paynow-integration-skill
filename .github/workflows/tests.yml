@@ -97,11 +97,19 @@ jobs:
 
   python:
     name: Python ${{ matrix.python }} - tooling
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.8', '3.12']
+        # actions/python-versions publishes no Ubuntu 26 build for 3.8 or 3.9, and
+        # ubuntu-latest migrates to Ubuntu 26 from 19 Oct 2026. Pin the floor version
+        # to a runner that keeps providing it, so the "Python 3.8+" claim in the
+        # README stays honestly tested rather than quietly breaking on a runner bump.
+        include:
+          - python: '3.8'
+            os: ubuntu-24.04
+          - python: '3.12'
+            os: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

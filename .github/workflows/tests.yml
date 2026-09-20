@@ -1,0 +1,205 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.0', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint every PHP asset
+        working-directory: paynow-skills/paynow-integration/assets/php-laravel
+        run: |
+          for f in *.php; do php -l "$f"; done
+
+      - name: Hash helper against Paynow's published fixtures
+        working-directory: paynow-skills/paynow-integration/assets/php-laravel
+        run: |
+          # Strip the Laravel namespace so the helper can run standalone.
+          sed '/^namespace /d' PaynowHash.php > /tmp/PaynowHash.php
+          php -r '
+            require "/tmp/PaynowHash.php";
+            $KEY = "3e9fed89-60e1-4ce5-ab6e-6b1eb2d4f977";
+            $h = new PaynowHash($KEY);
+
+            $out = $h->generate([
+              "id" => "1201", "reference" => "TEST REF", "amount" => "99.99",
+              "additionalinfo" => "A test ticket transaction",
+              "returnurl" => "http://www.google.com/search?q=returnurl",
+              "resulturl" => "http://www.google.com/search?q=resulturl",
+              "status" => "Message",
+            ]);
+            $want = "2A033FC38798D913D42ECB786B9B19645ADEDBDE788862032F1BD82CF3B92DEF"
+                  . "84F316385D5B40DBB35F1A4FD7D5BFE73835174136463CDD48C9366B0749C689";
+            if ($out !== $want) { fwrite(STDERR, "outbound fixture FAILED\n"); exit(1); }
+            echo "outbound fixture OK\n";
+
+            $body = "status=Ok"
+              . "&browserurl=https%3a%2f%2fstaging.paynow.co.zw%2fPayment%2fConfirmPayment%2f9510"
+              . "&pollurl=https%3a%2f%2fstaging.paynow.co.zw%2fInterface%2fCheckPayment%2f"
+              . "%3fguid%3dc7ed41da-0159-46da-b428-69549f770413"
+              . "&paynowreference=9510"
+              . "&hash=750DD0B0DF374678707BB5AF915AF81C228B9058AD57BB7120569EC68BBB9C2E"
+              . "FC1B26C6375D2BC562AC909B3CD6B2AF1D42E1A5E479FFAC8F4FB3FDCE71DF4D";
+            $fields = PaynowHash::parseResponse($body);
+            if (! $h->verify($fields)) { fwrite(STDERR, "inbound fixture FAILED\n"); exit(1); }
+            echo "inbound fixture OK\n";
+
+            // Both official SDKs lower-case the key; a helper that skips this passes
+            // every published fixture and then fails on a real upper-cased key.
+            if ((new PaynowHash(strtoupper($KEY)))->generate(["a" => "1"]) !== $h->generate(["a" => "1"])) {
+              fwrite(STDERR, "key-case regression FAILED\n"); exit(1);
+            }
+            echo "key-case regression OK\n";
+
+            $t = $fields; $t["status"] = "Paid";
+            if ($h->verify($t)) { fwrite(STDERR, "tamper detection FAILED\n"); exit(1); }
+            echo "tamper detection OK\n";
+          '
+
+  node:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Syntax-check every JS asset
+        working-directory: paynow-skills/paynow-integration/assets/node-express
+        run: |
+          for f in *.js; do node --check "$f"; done
+
+      - name: Unit tests
+        working-directory: paynow-skills/paynow-integration/assets/node-express
+        run: node --test
+
+  python:
+    name: Python ${{ matrix.python }} - tooling
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.8', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Hash script self-test
+        working-directory: paynow-skills/paynow-integration
+        run: python3 scripts/paynow_hash.py selftest
+
+      - name: Auditor must be clean on the shipped assets
+        working-directory: paynow-skills/paynow-integration
+        run: |
+          python3 scripts/audit_integration.py assets/php-laravel
+          python3 scripts/audit_integration.py assets/node-express
+          python3 scripts/audit_integration.py .
+
+      - name: Auditor must still catch a deliberately broken integration
+        working-directory: paynow-skills/paynow-integration
+        run: |
+          mkdir -p /tmp/badproj
+          cat > /tmp/badproj/bad.php <<'PHP'
+          <?php
+          use Paynow\Payments\Paynow;
+          public function paymentReturn(Request $r) {   // returnurl
+              $order->markPaid();
+              FulfilOrder::dispatch($order);
+          }
+          public function callback() {                  // resulturl
+              parse_str(file_get_contents('php://input'), $f);
+              if ($status->paid()) { $order->markPaid(); }
+          }
+          PHP
+          if python3 scripts/audit_integration.py /tmp/badproj; then
+            echo "::error::auditor found nothing in a knowingly broken file"
+            exit 1
+          fi
+          echo "auditor correctly flagged the broken integration"
+
+  links:
+    name: Docs - links and structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every relative link and in-page anchor must resolve
+        run: |
+          python3 - <<'PY'
+          import re, os, io, sys
+          bad = []
+          def slug(h):
+              s = re.sub(r"<[^>]+>", "", h).strip().lower()
+              s = re.sub(r"[^\w\s-]", "", s)
+              return s.replace(" ", "-").strip("-")
+          for dp, dn, fn in os.walk("."):
+              if ".git" in dp: continue
+              for f in fn:
+                  if not f.endswith(".md"): continue
+                  p = os.path.join(dp, f)
+                  t = io.open(p, encoding="utf-8").read()
+                  heads = {slug(h) for h in re.findall(r"^#{1,6}\s+(.*?)\s*$", t, re.M)}
+                  for target in re.findall(r"\]\(([^)\s]+)\)", t):
+                      if target.startswith(("http", "mailto:")): continue
+                      if target.startswith("#"):
+                          if target[1:] not in heads:
+                              bad.append("%s -> %s" % (p, target))
+                          continue
+                      base = target.split("#")[0]
+                      if base and not os.path.exists(os.path.normpath(os.path.join(dp, base))):
+                          bad.append("%s -> %s" % (p, target))
+          for b in bad: print("::error::broken link", b)
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: SKILL.md frontmatter must be valid and the name must match the folder
+        run: |
+          python3 - <<'PY'
+          import re, io
+          t = io.open("paynow-skills/paynow-integration/SKILL.md", encoding="utf-8").read()
+          m = re.match(r"^---\n(.*?)\n---\n", t, re.S)
+          assert m, "SKILL.md has no closed frontmatter block"
+          fm = m.group(1)
+          assert re.search(r"^name:\s*paynow-integration\s*$", fm, re.M), "name must be paynow-integration"
+          assert "description:" in fm, "description is required"
+          lines = t.count("\n")
+          assert lines < 500, "SKILL.md is %d lines; keep it under 500" % lines
+          print("frontmatter OK, %d lines" % lines)
+          PY
+
+      - name: No integration key may be committed
+        run: |
+          # Paynow publishes this one in its own hashing examples, so it is allowed.
+          if grep -rInE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' \
+               --exclude-dir=.git . \
+             | grep -vi '3e9fed89-60e1-4ce5-ab6e-6b1eb2d4f977' \
+             | grep -i 'key'; then
+            echo "::error::a GUID that looks like an integration key was committed"
+            exit 1
+          fi
+          echo "no integration keys found"

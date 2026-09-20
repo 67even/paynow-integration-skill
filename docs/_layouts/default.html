@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{%- seo -%}
+<link rel="alternate" type="application/atom+xml" title="{{ site.title }}" href="{{ '/sitemap.xml' | relative_url }}">
+<style>
+  :root{
+    --bg:#fff; --fg:#1f2328; --muted:#59636e; --rule:#d1d9e0;
+    --link:#0969da; --code-bg:#f6f8fa; --accent:#bc4c00; --warn-bg:#fff8c5; --warn-rule:#d4a72c;
+    --max:52rem;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --rule:#3d444d;
+      --link:#4493f8; --code-bg:#151b23; --accent:#db6d28; --warn-bg:#272115; --warn-rule:#9e6a03;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  .skip{position:absolute;left:-9999px}
+  .skip:focus{left:8px;top:8px;background:var(--bg);padding:.5rem;z-index:10}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 1.25rem}
+  header.site{border-bottom:1px solid var(--rule);padding:1.1rem 0;margin-bottom:2.25rem}
+  header.site .wrap{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;align-items:baseline}
+  header.site a.brand{font-weight:600;color:var(--fg);text-decoration:none;white-space:nowrap}
+  header.site nav{display:flex;flex-wrap:wrap;gap:.9rem;font-size:.9rem}
+  header.site nav a{color:var(--muted);text-decoration:none}
+  header.site nav a:hover,header.site nav a[aria-current=page]{color:var(--link);text-decoration:underline}
+  main{padding-bottom:3rem}
+  h1,h2,h3,h4{line-height:1.25;margin:2rem 0 .75rem;font-weight:600}
+  h1{font-size:2rem;margin-top:0;letter-spacing:-.02em}
+  h2{font-size:1.4rem;padding-bottom:.3rem;border-bottom:1px solid var(--rule)}
+  h3{font-size:1.15rem}
+  p,ul,ol{margin:0 0 1rem}
+  a{color:var(--link)}
+  code{background:var(--code-bg);padding:.15em .35em;border-radius:6px;font-size:.88em;
+    font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+  pre{background:var(--code-bg);padding:.9rem 1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+  pre code{background:none;padding:0;font-size:inherit}
+  blockquote{margin:1rem 0;padding:.6rem 1rem;border-left:4px solid var(--warn-rule);
+    background:var(--warn-bg);border-radius:0 6px 6px 0}
+  blockquote p:last-child{margin-bottom:0}
+  table{border-collapse:collapse;width:100%;margin:0 0 1.25rem;font-size:.92rem;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--rule);padding:.5rem .7rem;text-align:left;vertical-align:top}
+  th{background:var(--code-bg);font-weight:600}
+  hr{border:0;border-top:1px solid var(--rule);margin:2rem 0}
+  footer.site{border-top:1px solid var(--rule);padding:1.5rem 0 3rem;color:var(--muted);font-size:.875rem}
+  footer.site a{color:var(--muted)}
+  .lede{font-size:1.05rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="{{ '/' | relative_url }}">Paynow Integration Skill</a>
+    <nav>
+      <a href="{{ '/hashing/' | relative_url }}">Hashing</a>
+      <a href="{{ '/php-laravel/' | relative_url }}">PHP&nbsp;/&nbsp;Laravel</a>
+      <a href="{{ '/nodejs-express/' | relative_url }}">Node&nbsp;/&nbsp;Express</a>
+      <a href="{{ '/raw-http/' | relative_url }}">HTTP&nbsp;API</a>
+      <a href="{{ '/testing/' | relative_url }}">Testing</a>
+      <a href="{{ '/troubleshooting/' | relative_url }}">Troubleshooting</a>
+      <a href="https://github.com/{{ site.repository }}">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="content">
+  <div class="wrap">
+    <h1>{{ page.title }}</h1>
+    {%- if page.lede %}<p class="lede">{{ page.lede }}</p>{% endif -%}
+    {{ content }}
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p>
+      {%- if page.source %}
+      This page is generated from
+      <a href="https://github.com/{{ site.repository }}/blob/main/{{ page.source }}"><code>{{ page.source }}</code></a>.
+      {% endif -%}
+      Found something wrong?
+      <a href="https://github.com/{{ site.repository }}/issues">Open an issue</a>.
+    </p>
+    <p>
+      MIT licensed. Written and maintained by
+      <a href="https://github.com/johnmugabe">John Mugabe</a>.
+      Independent and community-maintained — not affiliated with or endorsed by Paynow Zimbabwe.
+    </p>
+  </div>
+</footer>
+</body>
+</html>

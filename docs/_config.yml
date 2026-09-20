@@ -1,0 +1,42 @@
+# Jekyll configuration for https://67even.github.io/paynow-integration-skill
+#
+# Pages in this folder are GENERATED from paynow-skills/paynow-integration/
+# by tools/build_docs.py. Edit the source files, then re-run the generator —
+# CI fails the build if the two ever drift apart.
+
+title: Paynow Integration Skill
+tagline: Integrating Paynow Zimbabwe without the bugs that cost merchants money
+description: >-
+  Reference and working code for integrating the Paynow Zimbabwe payment gateway
+  in PHP/Laravel, Node.js/Express, or any language over raw HTTP. Verified against
+  Paynow's own SDKs, including the places its documentation contradicts them.
+
+url: https://67even.github.io
+baseurl: /paynow-integration-skill
+
+repository: 67even/paynow-integration-skill
+
+author:
+  name: John Mugabe
+
+# Both are supported on GitHub Pages branch builds.
+# seo-tag writes <title>, meta description, canonical and Open Graph tags —
+# which is the entire point of publishing these as pages rather than leaving
+# them as Markdown in a subfolder.
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+# Clean URLs without .html
+permalink: pretty

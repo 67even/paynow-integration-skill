@@ -53,3 +53,10 @@ composer.lock
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ---------------------------------------------------------------------------
+# Jekyll (local docs builds)
+# ---------------------------------------------------------------------------
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata

@@ -200,6 +200,14 @@ jobs:
           print("frontmatter OK, %d lines" % lines)
           PY
 
+      - name: docs/ must be in sync with the reference sources
+        run: |
+          # docs/ is generated. If someone edits a reference file and forgets to
+          # regenerate, the published site silently goes stale - which is uniquely
+          # bad for a project whose whole claim is that it is correct where the
+          # official documentation is not.
+          python3 tools/build_docs.py --check
+
       - name: No integration key may be committed
         run: |
           # Paynow publishes this one in its own hashing examples, so it is allowed.

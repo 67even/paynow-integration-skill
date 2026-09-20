@@ -74,16 +74,38 @@ pre.highlight {
   }
 }
 
-// --- the Paynow button sits in the footer of the landing page --------------
-.paynow-attribution {
+// --- the hero's call-to-action pair ---------------------------------------
+// kramdown wraps the two links in a <p> inside this div, so the centring has
+// to be text-align (the .btn is inline-block) rather than a flex rule on the
+// wrapper - flex would only centre the <p>, not the buttons inside it.
+.hero-actions {
   text-align: center;
-  margin-top: 2.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #262825;
+  margin-bottom: 2rem;
 
-  img { width: 150px; height: auto; opacity: 0.85; }
-  p { color: #797a79; font-size: 0.8rem; margin-top: 0.6rem; }
+  p { margin: 0; }
+
+  .btn {
+    margin: 0.25rem;
+    vertical-align: middle;
+  }
 }
+
+// --- the Paynow button replaces the theme credit in the nav footer ---------
+// One include feeds two places: the desktop sidebar footer and the mobile
+// page footer. Both are narrow, so the 200px artwork is scaled down.
+.paynow-mark {
+  display: block;
+  background-image: none !important;   // the nav footer underlines its links
+
+  // Paynow's own button artwork - shown at full strength rather than dimmed
+  // to match the theme, because it is somebody else's brand mark.
+  img {
+    width: 132px;
+    height: auto;
+  }
+}
+
+.site-footer .paynow-mark { margin-top: 0.25rem; }
 
 // --- red buttons need BLACK text: white on #FF3131 is only 3.66:1 ----------
 .btn-primary {

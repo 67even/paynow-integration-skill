@@ -18,8 +18,10 @@ description: >-
   </p>
 </div>
 
-[View on GitHub](https://github.com/67even/paynow-integration-skill){: .btn .btn-primary .mr-2 }
+<div class="hero-actions" markdown="1">
+[View on GitHub](https://github.com/67even/paynow-integration-skill){: .btn .btn-primary }
 [Troubleshoot a problem](troubleshooting/){: .btn }
+</div>
 
 ---
 
@@ -123,10 +125,3 @@ If you re-check these against the hub later and find them disagreeing, the hub i
 stale one — but please
 [open an issue](https://github.com/67even/paynow-integration-skill/issues) if the
 packages have changed.
-
-<div class="paynow-attribution" markdown="0">
-  <a href="https://developers.paynow.co.zw">
-    <img src="{{ '/assets/images/paynow-button.svg' | relative_url }}" alt="Paynow Zimbabwe developer documentation">
-  </a>
-  <p>Independent and community-maintained. Not affiliated with, endorsed by, or supported by Paynow Zimbabwe.</p>
-</div>

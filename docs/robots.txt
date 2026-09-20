@@ -1,0 +1,13 @@
+---
+# Overrides the bare Sitemap-only file jekyll-sitemap would otherwise generate,
+# so the rules are explicit and reviewable rather than implied.
+layout: null
+sitemap: false
+---
+User-agent: *
+Allow: /
+
+# Generated Jekyll internals - nothing a searcher would want to land on.
+Disallow: /assets/js/search-data.json
+
+Sitemap: {{ site.url }}{{ site.baseurl }}/sitemap.xml

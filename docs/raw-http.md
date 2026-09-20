@@ -4,6 +4,15 @@ title: "HTTP API reference"
 nav_order: 6
 permalink: /raw-http/
 description: "The Paynow Zimbabwe HTTP interface for any language: endpoints, request fields, status values, Express Checkout and the status-update callback."
+date: 2026-09-20
+last_modified_at: 2026-09-20
+seo:
+  type: WebPage
+image:
+  path: /assets/og/raw-http.png
+  width: 1200
+  height: 630
+  alt: "HTTP API reference - Paynow Integration Skill"
 source_file: paynow-skills/paynow-integration/references/raw-http.md
 lede: "Use this for any language without an official SDK, and for the Express Checkout methods the PHP and Node SDKs don’t wrap."
 ---

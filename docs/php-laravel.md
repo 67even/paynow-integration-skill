@@ -4,6 +4,15 @@ title: "PHP & Laravel"
 nav_order: 4
 permalink: /php-laravel/
 description: "Integrating Paynow in PHP and Laravel: the SDK's API, the exceptions it throws, why paid() does not mean paid, and complete controller wiring."
+date: 2026-09-20
+last_modified_at: 2026-09-20
+seo:
+  type: WebPage
+image:
+  path: /assets/og/php-laravel.png
+  width: 1200
+  height: 630
+  alt: "PHP & Laravel - Paynow Integration Skill"
 source_file: paynow-skills/paynow-integration/references/php-laravel.md
 ---
 

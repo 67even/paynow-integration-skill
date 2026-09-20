@@ -4,6 +4,15 @@ title: "Node.js & Express"
 nav_order: 5
 permalink: /nodejs-express/
 description: "Integrating Paynow in Node.js and Express: why status.paid() throws, why pollTransaction must be awaited, and a raw client for InnBucks."
+date: 2026-09-20
+last_modified_at: 2026-09-20
+seo:
+  type: WebPage
+image:
+  path: /assets/og/nodejs-express.png
+  width: 1200
+  height: 630
+  alt: "Node.js & Express - Paynow Integration Skill"
 source_file: paynow-skills/paynow-integration/references/nodejs-express.md
 ---
 

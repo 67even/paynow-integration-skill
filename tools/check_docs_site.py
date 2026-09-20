@@ -15,6 +15,8 @@ modes that have actually bitten this repository:
     sidebar or collides its URL with another page.
   * An asset referenced by _config.yml or _includes/head_custom.html that was
     never committed - a 404 for the logo or favicon.
+  * A page with no Open Graph card, or one whose card was never generated, so
+    the link renders as a bare URL everywhere it is shared.
 
 Run it exactly as CI does:
 
@@ -24,6 +26,7 @@ Run it exactly as CI does:
 import io
 import os
 import re
+import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,6 +35,15 @@ DOCS = os.path.join(ROOT, "docs")
 
 def read(*parts):
     return io.open(os.path.join(*parts), encoding="utf-8").read()
+
+
+def png_size(path):
+    """Width and height from the IHDR chunk - avoids a Pillow dependency."""
+    with open(path, "rb") as fh:
+        head = fh.read(24)
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    return struct.unpack(">II", head[16:24])
 
 
 def front_matter(text):
@@ -95,9 +107,25 @@ def check():
         if fm is None:
             bad.append("docs/%s has no front matter" % f)
             continue
-        for key in ("title", "nav_order", "permalink", "description"):
+        for key in ("title", "nav_order", "permalink", "description",
+                    "last_modified_at", "image"):
             if not re.search(r"^%s:" % key, fm, re.M):
                 bad.append("docs/%s front matter has no `%s:`" % (f, key))
+
+        # The OG card must exist at the declared path and be 1200x630: those
+        # are the dimensions the meta tags promise, and Twitter and LinkedIn
+        # drop a card whose real size disagrees.
+        m = re.search(r"^image:\s*\n\s+path:\s*(\S+)\s*$", fm, re.M)
+        if m:
+            card = os.path.join(DOCS, m.group(1).lstrip("/"))
+            if not os.path.isfile(card):
+                bad.append("docs/%s declares image %s, which does not exist - "
+                           "run python3 tools/build_og_images.py" % (f, m.group(1)))
+            else:
+                size = png_size(card)
+                if size and size != (1200, 630):
+                    bad.append("docs/%s card %s is %dx%d, not the 1200x630 its "
+                               "meta tags declare" % (f, m.group(1), size[0], size[1]))
         m = re.search(r"^permalink:\s*(\S+)\s*$", fm, re.M)
         if m:
             if m.group(1) in seen:

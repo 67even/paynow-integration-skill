@@ -4,6 +4,15 @@ title: "Troubleshooting"
 nav_order: 2
 permalink: /troubleshooting/
 description: "Symptom-to-cause table for Paynow Zimbabwe: hash mismatches, callbacks that never arrive, and orders marked paid that are never fulfilled."
+date: 2026-09-20
+last_modified_at: 2026-09-20
+seo:
+  type: WebPage
+image:
+  path: /assets/og/troubleshooting.png
+  width: 1200
+  height: 630
+  alt: "Troubleshooting - Paynow Integration Skill"
 source_file: paynow-skills/paynow-integration/references/troubleshooting.md
 lede: "Start here when something is broken. Most Paynow problems are one of about a dozen things, and the symptom usually points straight at the cause."
 ---

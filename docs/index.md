@@ -5,6 +5,12 @@ permalink: /
 description: >-
   Integrate Paynow Zimbabwe correctly in PHP/Laravel, Node.js/Express or raw
   HTTP. EcoCash, OneMoney, InnBucks. Verified against Paynow's own SDKs.
+last_modified_at: 2026-09-20
+image:
+  path: /assets/og/home.png
+  width: 1200
+  height: 630
+  alt: "Paynow Integration Skill - integrate Paynow Zimbabwe in PHP, Laravel and Node.js"
 ---
 
 <div class="hero" markdown="0">

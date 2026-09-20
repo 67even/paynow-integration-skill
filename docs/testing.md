@@ -4,6 +4,15 @@ title: "Testing & go-live"
 nav_order: 7
 permalink: /testing/
 description: "Testing Paynow: the merchant-account rule that blocks your own test payments, the four EcoCash test numbers, card tokens, and the go-live checklist."
+date: 2026-09-20
+last_modified_at: 2026-09-20
+seo:
+  type: WebPage
+image:
+  path: /assets/og/testing.png
+  width: 1200
+  height: 630
+  alt: "Testing & go-live - Paynow Integration Skill"
 source_file: paynow-skills/paynow-integration/references/testing-and-golive.md
 ---
 

@@ -150,6 +150,45 @@ jobs:
           fi
           echo "auditor correctly flagged the broken integration"
 
+  seo:
+    name: Docs - rendered SEO and structured data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Render the site the way GitHub Pages will
+        run: |
+          # The theme version is read from docs/_config.yml's remote_theme pin so
+          # it is declared in exactly one place. remote_theme itself resolves over
+          # the network at build time; installing that same version as a gem and
+          # overriding `theme:` renders identically without depending on that.
+          VERSION=$(sed -n 's/^remote_theme:.*@v\(.*\)$/\1/p' docs/_config.yml)
+          if [ -z "$VERSION" ]; then
+            echo "::error::could not read the theme version from docs/_config.yml"
+            exit 1
+          fi
+          echo "building against just-the-docs $VERSION"
+          gem install --no-document jekyll -v '~> 4.4'
+          gem install --no-document just-the-docs -v "$VERSION"
+          gem install --no-document jekyll-seo-tag jekyll-sitemap
+          printf 'remote_theme: null\ntheme: just-the-docs\nplugins:\n  - jekyll-seo-tag\n  - jekyll-sitemap\n' > /tmp/local-theme.yml
+          cd docs && jekyll build --config _config.yml,/tmp/local-theme.yml -d /tmp/site
+
+      - name: Every JSON-LD block must parse and carry its required properties
+        run: |
+          # Structured data fails silently: one stray comma out of Liquid and
+          # Google discards the whole block with nothing visibly wrong on the
+          # page. This validates what was RENDERED, not the template.
+          python3 tools/check_structured_data.py /tmp/site
+
+      - name: Every page must carry the tags that decide how it appears in search
+        run: |
+          python3 tools/check_meta_tags.py /tmp/site
+
   links:
     name: Docs - links and structure
     runs-on: ubuntu-latest

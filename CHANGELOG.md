@@ -17,6 +17,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   this catches a missing default layout, a `_layouts/` override shadowing the
   theme, a `color_scheme` with no matching `_sass` file, a page missing front
   matter, and a referenced logo or favicon that was never committed.
+- Open Graph cards for every page (`tools/build_og_images.py`), rendered at
+  1200×630 with headless Chromium from the 67even palette, so a shared link
+  shows a card instead of a bare URL. Wired through `jekyll-seo-tag`, which
+  turns them into `og:image` and a `summary_large_image` Twitter card.
+- Structured data Google still surfaces: `BreadcrumbList` on every page and
+  `TechArticle` on each reference page, plus `Organization` and
+  `SoftwareSourceCode` for entity matching. Deliberately no `FAQPage` or
+  `HowTo` — Google retired both, so that markup would render nothing.
+- `robots` directives with `max-image-preview:large` and `max-snippet:-1`,
+  which `jekyll-seo-tag` does not emit, and an explicit `docs/robots.txt`.
+- `last_modified_at` on every page, published as `<lastmod>` in the sitemap and
+  as `dateModified` in the structured data. The date only moves when the page
+  content actually changes, so `build_docs.py --check` stays green.
+- `tools/check_structured_data.py` and `tools/check_meta_tags.py`, both run
+  against the *rendered* site by a new CI job that builds it with Jekyll.
+  Structured data fails silently — a stray comma out of Liquid and Google drops
+  the block with nothing visibly wrong — so checking the template is not enough.
 
 ### Changed
 

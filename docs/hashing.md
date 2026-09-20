@@ -4,6 +4,15 @@ title: "Hashing & signatures"
 nav_order: 3
 permalink: /hashing/
 description: "Why Paynow hashes mismatch and how to fix it: field order, URL-decoding, hashing every returned value, and lower-casing the integration key."
+date: 2026-09-20
+last_modified_at: 2026-09-20
+seo:
+  type: WebPage
+image:
+  path: /assets/og/hashing.png
+  width: 1200
+  height: 630
+  alt: "Hashing & signatures - Paynow Integration Skill"
 source_file: paynow-skills/paynow-integration/references/hashing.md
 lede: "Almost every “Paynow isn’t working” report is a hashing bug. Prove the helper against the two fixtures below and the whole class of failure disappears."
 ---

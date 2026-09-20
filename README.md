@@ -10,7 +10,7 @@
   <img alt="PHP 8.0+" src="https://img.shields.io/badge/PHP-8.0%2B-777BB4?logo=php&logoColor=white">
   <img alt="Node 18+" src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white">
   <img alt="Python 3.8+" src="https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white">
-  <a href="https://github.com/67even/paynow-integration-skill/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/67even/paynow-integration-skill/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="https://github.com/67even/paynow-integration-skill/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/67even/paynow-integration-skill/actions/workflows/tests.yml/badge.svg?branch=main"></a>
 </p>
 
 ---

@@ -203,10 +203,17 @@ queue the fulfilment job, return `200`. Unknown references get logged and a `200
 |---|---|
 | `PaynowHash.php` | Hash helper + ordered response parser |
 | `PaynowGateway.php` | Service wrapping the SDK; the only place credentials are read |
-| `PaynowController.php` | `checkout`, `callback`, `return`, `status` actions |
+| `PaynowController.php` | `checkout`, `checkoutMobile`, `callback`, `returnFromPaynow`, `status` actions |
 | `config-services-paynow.php` | Snippet for `config/services.php` |
 | `routes-web.php` | Route definitions |
 | `migration_add_paynow_to_orders.php` | `poll_url`, `paynow_reference`, `payment_status`, `merchant_trace` |
+
+> **`merchanttrace` and the PHP SDK.** `sendMobile()` takes no `merchanttrace`
+> parameter, so an Express Checkout started through the SDK never sends one and
+> `/interface/trace` cannot recover it. The starter leaves the column null rather
+> than storing a locally generated value that would look like a recovery handle
+> and answer `NotFound`. To get trace recovery in PHP, initiate over raw HTTP —
+> the field table is in `raw-http.md`.
 
 Three things to wire up that are easy to miss:
 

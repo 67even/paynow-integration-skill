@@ -5,7 +5,7 @@ nav_order: 8
 permalink: /testing/
 description: "Testing Paynow: the merchant-account rule that blocks your own test payments, the four EcoCash test numbers, card tokens, and the go-live checklist."
 date: 2026-09-20
-last_modified_at: 2026-09-20
+last_modified_at: 2026-09-21
 seo:
   type: WebPage
 image:
@@ -166,7 +166,9 @@ that lose real money and neither shows up in ordinary happy-path testing.
    - `additionalinfo` carries nothing confidential — the customer sees it
    - `reference` unique per transaction; `amount` two decimals, no symbol
    - Callback amount reconciled against your own record
-   - `pollUrl` persisted before redirect; `merchanttrace` sent and stored for Express Checkout
+   - `pollUrl` persisted before redirect; for Express Checkout, `merchanttrace`
+     **sent to Paynow and stored** — a value you only stored locally recovers
+     nothing. The PHP SDK cannot send one; raw HTTP can.
    - Callback idempotent, returns `200` fast, slow work queued
    - All three paid states treated as paid, checked in your own code
    - Fulfilment never driven by the `returnurl` hit

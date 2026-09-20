@@ -10,7 +10,7 @@ paynow-integration-workspace/
 paynow-skill-review.html
 feedback.json
 
-# Packaged skill bundle — rebuild it with scripts/package_skill.py, don't commit binaries
+# Packaged skill bundle — rebuild it with the zip command in README.md, don't commit binaries
 *.skill
 
 # ---------------------------------------------------------------------------

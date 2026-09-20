@@ -15,8 +15,11 @@ return new class extends Migration
             // Paynow's own reference, for reconciliation and support tickets.
             $table->string('paynow_reference')->nullable();
 
-            // Unique per Express Checkout request. Without it, a request whose
-            // response is lost to a timeout cannot be recovered at all.
+            // Unique per Express Checkout request, and the ONLY way back to a
+            // request whose response was lost to a timeout (/interface/trace).
+            // Only fill this with a value you actually sent to Paynow. The PHP
+            // SDK's sendMobile() cannot send one, so on that path the column
+            // stays null; it is populated when you initiate over raw HTTP.
             $table->string('merchant_trace', 32)->nullable()->unique();
 
             $table->string('payment_status')->default('pending');

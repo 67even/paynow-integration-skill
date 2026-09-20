@@ -189,11 +189,12 @@ on their own:
 
 ```bash
 # Reproduce a hash, or work out why one mismatches
-python3 scripts/paynow_hash.py verify --key <integration-key> --data 'status=Paid&hash=...'
+python3 scripts/paynow_hash.py verify --key <integration-key> --body 'status=Paid&hash=...'
 
 # Scan an existing integration for the mistakes that lose money
 python3 scripts/audit_integration.py path/to/your/app
 ```
 
-`audit_integration.py` exits non-zero when it finds something, so it drops
-straight into CI.
+`audit_integration.py` exits `1` when it finds anything **CRITICAL** or **HIGH**,
+and `0` otherwise — so it drops straight into CI without failing your build over a
+MEDIUM. Both commands run from `paynow-skills/paynow-integration`.

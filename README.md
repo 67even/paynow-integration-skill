@@ -85,7 +85,7 @@ from the docs.
 | **A skill Claude loads on demand** | `SKILL.md` carries the decision tree and five money-safety rules. Six reference files load only when the task needs them, so nothing is wasted on a question about hashing when you asked about test mode. |
 | **Copy-ready starter code** | A Laravel service, controller, routes, migration and PHPUnit tests; an Express route set, raw Express Checkout client and `node --test` suite. Written to be adapted, not pasted blind. |
 | **Two executable tools** | Prove a hashing implementation in any language against Paynow's published fixtures, and scan an existing codebase for the mistakes that lose money. |
-| **A corrected API reference** | [`PAYNOW.md`](PAYNOW.md) — the full protocol, with an appendix documenting the nine places the official hub is wrong about its own SDKs. |
+| **A corrected API reference** | [`PAYNOW.md`](PAYNOW.md) — the full protocol, with an appendix documenting the eight places the official hub is wrong about its own SDKs, plus one version-floor note. |
 
 ---
 
@@ -350,7 +350,12 @@ triggers the retries — and queue the slow work.
 ├── README.md                    ← you are here
 ├── CHANGELOG.md
 ├── LICENSE
+├── NOTICE                       Paynow non-affiliation disclaimer
 ├── PAYNOW.md                    Full corrected Paynow API reference (~110 KB)
+├── .github/workflows/tests.yml  CI: PHP, Node, Python, links, rendered SEO
+├── assets/                      Logos and the Paynow button used by the README
+├── docs/                        The published site — 67even.github.io/paynow-integration-skill
+├── tools/                       Generators and checkers for docs/ (see below)
 └── paynow-skills/
     ├── README.md                Skill-folder guide
     ├── VERIFICATION.md          What was executed to verify this, and what it proves
@@ -372,6 +377,20 @@ triggers the retries — and queue the slow work.
         └── evals/evals.json             Test prompts and assertions
 ```
 
+
+`docs/` is **generated** from `paynow-skills/paynow-integration/references/` by
+`tools/build_docs.py` — edit the reference files, never `docs/*.md`, and re-run the
+generator. CI fails if the two drift apart. The other tools check what gets published:
+
+| Tool | Checks |
+|---|---|
+| `build_docs.py --check` | `docs/` is in sync with the reference sources |
+| `build_og_images.py` | Regenerates the Open Graph cards (needs Playwright) |
+| `check_links.py` | Every internal link and anchor resolves |
+| `check_docs_site.py` | The Jekyll config is sound and every page has its card |
+| `check_meta_tags.py` | Title, description, canonical, OG tags, one `<h1>`, sitemap |
+| `check_structured_data.py` | Every JSON-LD block parses and is complete |
+
 ---
 
 ## Verification
@@ -389,6 +408,12 @@ Everything here was verified by **execution**, not inspection.
 | Auditor precision — the shipped assets and the skill directory itself | **0 findings** |
 | Auditor recall — deliberately broken PHP and Express fixtures | **4 and 5 findings** |
 | 37 structural checks (paths, anchors, fixture constants, endpoint consistency) | **all clean** |
+
+The hashing self-tests, the auditor runs and the docs checks above re-run from a clean
+clone — CI runs them on every push. The two SDK-agreement rows needed the real
+`paynow/php-sdk` and npm `paynow` installed; that harness was one-off and is not in the
+repository. [`paynow-skills/VERIFICATION.md`](paynow-skills/VERIFICATION.md) says which
+is which.
 
 Full record: [`paynow-skills/VERIFICATION.md`](paynow-skills/VERIFICATION.md).
 

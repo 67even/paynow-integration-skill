@@ -46,7 +46,10 @@ Responses are **not JSON** — they come back as a URL-encoded query string:
 Status=Ok&BrowserUrl=http%3a%2f%2f...&PollUrl=http%3a%2f%2f...&Hash=8614C21D...
 ```
 
-You must `parse_str()` / `querystring.parse()` these, then **URL-decode each value**.
+Split these yourself — on `&`, then on the first `=` — and **URL-decode each
+value** as you go. Do **not** reach for `parse_str()` or `querystring.parse()`:
+both discard field order, which the hash depends on, and both URL-decode for you,
+so decoding again corrupts any value containing a `%`. See §6.4 for the splitter.
 
 ### The lifecycle
 
@@ -305,7 +308,9 @@ if (in_array($status->status(), $PAID, true)) {
 | `paynowReference()` | poll/status | Paynow's own reference |
 
 > `success()` only means *"Paynow accepted the request"*. It does **not** mean the customer paid.
-> Payment is only confirmed by `paid()` on a poll, or by a hash-verified status update.
+> Payment is confirmed by a hash-verified status update, or by a poll whose
+> `status()` is one of `Paid`, `Awaiting Delivery` or `Delivered`. Not by `paid()` —
+> see the row for it above.
 
 ### 3.9 Complete PHP example
 
@@ -1748,7 +1753,7 @@ Same behaviours and timings as above.
 | Calling `status.paid()` as the docs show | It does not exist — `TypeError`. Compare `status.status` against `Paid` / `Awaiting Delivery` / `Delivered`. |
 | Response members are **properties** (`response.success`), not methods | Don't call any of them. |
 | `pollTransaction()` resolves an `InitResponse`, so `reference` / `amount` come back undefined | Key poll results off your own stored reference. |
-| Body parser not configured for form posts | `app.use(express.urlencoded({ extended: false }))` on the callback route. |
+| Body parser not configured for form posts | `express.raw({ type: "*/*" })` on the callback route, and hash the raw string — `express.urlencoded` loses field order. See §10.4. |
 | Unhandled promise rejection on network failure | Always `.catch(…)` / wrap in `try/catch`. |
 | `returnUrl`/`resultUrl` set **after** `send()` | Set them before. |
 | `+` not decoded to space when hand-parsing responses | Replace `+` before `decodeURIComponent`. |
@@ -1960,8 +1965,13 @@ if (in_array($status, $PAID, true)) {
         exit;
     }
 
-    // Confirm by polling before releasing goods (recommended by Paynow)
-    $confirm = (new PaynowClient(getenv('PAYNOW_INTEGRATION_ID'), $key))->poll($lower['pollurl']);
+    // Confirm by polling before releasing goods (recommended by Paynow).
+    // Poll the URL you STORED at initiation, never $lower['pollurl'] from the
+    // request body. The hash check above proves the body came from Paynow, but
+    // the stored URL is the one you know belongs to this order - and keeping
+    // the rule unconditional is what makes it hold when a callback is replayed
+    // or when someone later moves the poll ahead of the verify.
+    $confirm = (new PaynowClient(getenv('PAYNOW_INTEGRATION_ID'), $key))->poll($order['poll_url']);
     if (! in_array($confirm['status'] ?? '', $PAID, true)) {
         error_log("[paynow] callback said paid but poll said {$confirm['status']}");
         http_response_code(200);

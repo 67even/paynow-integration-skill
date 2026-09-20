@@ -10,7 +10,6 @@ use App\Services\Paynow\PaynowException;
 use App\Services\Paynow\PaynowGateway;
 use App\Services\Paynow\PaynowHash;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class PaynowController extends Controller
 {
@@ -82,7 +81,13 @@ class PaynowController extends Controller
         $order->update([
             'poll_url' => $result['poll_url'],
             'payment_status' => 'awaiting_authorisation',
-            'merchant_trace' => Str::replace('-', '', (string) Str::uuid()),
+            // merchant_trace is deliberately NOT set here. The PHP SDK's
+            // sendMobile() has no merchanttrace parameter, so Paynow never
+            // receives one on this path - storing a locally generated UUID
+            // would look like a recovery handle while being useless, because
+            // /interface/trace would answer NotFound for it. If you need trace
+            // recovery, initiate Express Checkout over raw HTTP instead and
+            // send the value yourself: see references/raw-http.md.
         ]);
 
         return response()->json([

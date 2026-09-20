@@ -107,6 +107,7 @@ hashing implementation against Paynow's published fixtures in any language, and 
 that scans an existing codebase for the mistakes above.
 
 ```bash
+cd paynow-integration-skill/paynow-skills/paynow-integration
 python3 scripts/paynow_hash.py selftest              # 4/4 expected
 python3 scripts/audit_integration.py /path/to/project
 ```

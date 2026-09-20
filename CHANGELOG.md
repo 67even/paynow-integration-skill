@@ -42,6 +42,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **`PAYNOW.md` contradicted itself in four places, each one telling the reader to
+  do exactly what the rest of the repository classifies as a CRITICAL or HIGH
+  mistake.** §1 said to parse responses with `parse_str()` / `querystring.parse()`
+  and then URL-decode — §6.4, `hashing.md` and the auditor all forbid it, and it
+  double-decodes. §3.8 said payment is "confirmed by `paid()` on a poll", six lines
+  under the row explaining that `paid()` is false for `Awaiting Delivery`. The §9.3
+  Node troubleshooting table prescribed `express.urlencoded` on the callback route,
+  where §10.4 and every shipped file use `express.raw`. The §10.2 callback recipe
+  polled a URL taken from the request body, which the project's own evals mark as
+  a failure.
+- The Laravel starter stored a locally generated `merchant_trace` that was never
+  sent to Paynow — the PHP SDK's `sendMobile()` has no `merchanttrace` parameter.
+  It looked like a recovery handle while `/interface/trace` would answer
+  `NotFound`. The column is now left null on the SDK path, and the reference, the
+  migration comment and the go-live checklist say why and what to do instead.
+- `docs/install.md` documented `paynow_hash.py verify --data`; the flag is
+  `--body`, so the command a new user copies first exited 2. The same page said
+  the auditor "exits non-zero when it finds something" — it exits 1 only on
+  CRITICAL or HIGH, so a CI built on that sentence would pass MEDIUM findings its
+  author expected to block.
+- `docs/index.md`'s quick-start `cd`-ed nowhere, so its own next command could not
+  find the scripts.
+- `references/php-laravel.md` listed four controller actions; there are five, and
+  it named `return` rather than `returnFromPaynow`, dropping the mobile-money
+  action entirely.
+- The README called Appendix E "the nine places the official hub is wrong" — row 8
+  records a hub statement that is **true**, and the README's own summary table
+  lists eight.
+- The README's repository tree omitted `NOTICE`, `docs/`, `tools/`, `assets/` and
+  `.github/` — roughly half the repository — and nothing explained that `docs/` is
+  generated. `.gitignore` pointed at `scripts/package_skill.py`, which has never
+  existed.
+- `VERIFICATION.md` presented every check as reproducible. Three needed the real
+  `paynow/php-sdk` and npm `paynow` installed plus fixtures that were never
+  committed; it now says which rows re-run from a clean clone and which do not.
+
 - Every page was rendering without an `<h1>`. `build_docs.py` stripped the source
   heading on the assumption that just-the-docs renders `page.title` as one — its
   default layout emits `{{ content }}` and nothing else, so the pages simply had

@@ -25,6 +25,13 @@ the InnBucks expiry format without a source.
 
 ## What was executed
 
+Checks **2, 4, 6, 7, 8 and 10** re-run from a clean clone with nothing installed —
+they are the ones CI runs on every push. Checks **3, 5 and 9** needed
+`composer require paynow/php-sdk`, `npm install paynow` and deliberately broken
+fixtures; those harnesses were one-off and are not in the repository, so take those
+three rows as a record of what was done rather than something you can reproduce by
+cloning. Check **1** needs PHP installed.
+
 | # | Check | Result |
 |---|---|---|
 | 1 | `php -l` on all 8 PHP assets (PHP 8.4) | 8/8 parse |
@@ -36,8 +43,8 @@ the InnBucks expiry format without a source.
 | 7 | `paynow_hash.py` CLI: verify a real fixture, non-zero exit on a bad hash | correct |
 | 8 | Auditor precision: clean run on the good PHP assets, the good Node assets, and the skill directory itself | 0 findings each |
 | 9 | Auditor recall: a deliberately broken PHP controller and a deliberately broken Express route | 4 and 5 findings, all correct |
-| 10 | 37 structural checks — frontmatter, every referenced path exists, every in-file markdown anchor resolves, fixture constants identical across files, no stray digests, paid-state sets consistent, endpoint URLs consistent, no `paid()` gate or `parse_str` in shipped code, `evals.json` well-formed | all clean |
-| 11 | Packaged `.skill` zip integrity and `SKILL.md` byte-identical to source | OK |
+| 10 | 37 structural checks — frontmatter, every referenced path exists, every in-file markdown anchor resolves, fixture constants identical across files, no stray digests, paid-state sets consistent, endpoint URLs consistent, no `paid()` gate or `parse_str` in shipped code, `evals.json` well-formed. Run by a one-off script that was not committed; the parts of it that are worth running on every change now live in `tools/check_links.py` and `tools/check_docs_site.py`, which CI runs | all clean |
+| 11 | Packaged ZIP integrity and `SKILL.md` byte-identical to source, using the `zip` command in `README.md` | OK |
 
 ## Claims checked against primary sources
 

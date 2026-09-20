@@ -56,9 +56,17 @@ def headings(body):
 
 
 def links(body):
-    """Inline links, ignoring anything inside fenced code blocks."""
+    """Every internal reference, ignoring fenced code blocks.
+
+    Covers Markdown links AND the src/href of raw HTML, because the README uses
+    HTML for its centred header and badges - and an <img> whose file is missing
+    renders as a broken image on the front page, which is exactly the kind of
+    thing this is supposed to catch.
+    """
     body = re.sub(r"```.*?```", "", body, flags=re.S)
-    return re.findall(r"\]\(([^)\s]+)\)", body)
+    out = re.findall(r"\]\(([^)\s]+)\)", body)
+    out += re.findall(r'<(?:img|a|source)\b[^>]*?(?:src|href)="([^"]+)"', body)
+    return out
 
 
 def md_files(base, skip_docs):

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/button_pay-now_large.svg" alt="Paynow" width="200" height="81">
+</p>
+
 <h1 align="center">Paynow Integration Skill</h1>
 
 <p align="center">

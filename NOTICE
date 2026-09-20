@@ -1,0 +1,11 @@
+Paynow Integration Skill
+Copyright (c) 2026 John Mugabe
+
+This project documents the publicly published HTTP interface of Paynow Zimbabwe
+and the observable behaviour of Paynow's own open-source SDKs.
+
+It is an independent, community-maintained project. It is not affiliated with,
+endorsed by, or supported by Paynow Zimbabwe. "Paynow" and any related marks are
+the property of their respective owner.
+
+Licensed under the MIT License. See LICENSE.

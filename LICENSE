@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This project documents the publicly published HTTP interface of Paynow Zimbabwe
-and the behaviour of Paynow's own open-source SDKs. It is an independent,
-community-maintained project and is not affiliated with, endorsed by, or
-supported by Paynow Zimbabwe.

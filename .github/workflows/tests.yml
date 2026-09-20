@@ -6,6 +6,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+# CodeQL actions/missing-workflow-permissions: with no block here every job gets
+# a GITHUB_TOKEN carrying the repository default, which on many repos can write
+# code, issues and releases. Nothing in this workflow needs more than to read
+# the checkout. A job that later needs more should declare its own narrower
+# `permissions:` rather than widening this one.
+permissions:
+  contents: read
+
 jobs:
   php:
     name: PHP ${{ matrix.php }}

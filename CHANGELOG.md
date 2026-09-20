@@ -38,6 +38,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `docs/_config.yml`; `check_meta_tags.py` fails the build if the tag ever goes
   missing, because Google re-checks it and quietly un-verifies the property.
 
+### Security
+
+- Rate limiting on the Express example routes (`express-rate-limit`). Starting a
+  payment creates an order and calls Paynow, and the status route can call
+  Paynow on every hit, so leaving either unlimited hands a stranger a way to run
+  up your API usage. The callback's ceiling is deliberately far looser — Paynow
+  retries up to ten times per transaction and a `429` there costs a fulfilled
+  order, so the hash check remains the real defence on that route.
+- `audit_integration.py` matched `chart.googleapis.com` as a bare substring, so
+  a look-alike host such as `chart.googleapis.com.evil.test` would have matched
+  it. The host is now anchored at both ends.
+- `tests.yml` declares `permissions: contents: read`. Without it every job ran
+  with whatever the repository default grants, which is usually far more.
+
 ### Changed
 
 - `tools/check_links.py` now also checks raw HTML `src` and `href` attributes,

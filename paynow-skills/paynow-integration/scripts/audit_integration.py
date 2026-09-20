@@ -29,6 +29,13 @@ RESPONSE_FIELDS = ["status", "browserurl", "pollurl", "reference", "amount",
                    "paynowreference", "instructions", "error"]
 
 
+# A plain `"chart.googleapis.com" in line` also matches a look-alike host such as
+# chart.googleapis.com.evil.test or notchart.googleapis.com, which is the bug
+# CodeQL calls incomplete URL substring sanitization. Requiring a non-host
+# character on both sides pins it to the real host.
+CHART_HOST = re.compile(
+    r"""(?<![\w.-])chart\.googleapis\.com(?=[/:?\#"'\s)\],;]|$)""")
+
 COMMENT = re.compile(r"^\s*(?://|\*|/\*|#|<!--)")
 
 TESTISH = re.compile(r"(?:^|/)(?:tests?|spec|specs|__tests__|fixtures?|examples?|docs?)/"
@@ -186,7 +193,7 @@ def audit(root):
 
         # --- MEDIUM: deprecated Google chart QR ----------------------------------
         for i, ln in enumerate(lines, 1):
-            if "chart.googleapis.com" in ln:
+            if CHART_HOST.search(ln):
                 findings.append(Finding(
                     "MEDIUM", "third-party-qr", rel(root, path), i, ln,
                     "This sends the payment authorization code to a third party on every "

@@ -9,6 +9,7 @@
  */
 
 const express = require("express");
+const rateLimit = require("express-rate-limit"); // npm i express-rate-limit
 const { Paynow } = require("paynow");
 const { PaynowHash, isPaid, isTerminal } = require("./paynow-hash");
 
@@ -16,6 +17,54 @@ const app = express();
 const hasher = new PaynowHash(process.env.PAYNOW_INTEGRATION_KEY);
 
 app.use(express.json()); // NB: the callback route overrides this — see below
+
+/* ---------- rate limits ----------
+ * Three different jobs, so three different ceilings. Getting these backwards
+ * is worse than having none: throttle the callback too hard and you drop a real
+ * "Paid" notification, which is the exact failure this whole integration is
+ * built to avoid.
+ *
+ * If you run behind a proxy or a CDN, set `app.set("trust proxy", 1)` or every
+ * request arrives with the proxy's IP and all your customers share one bucket.
+ */
+
+// Starting a payment creates an order and calls Paynow. Unlimited, this is a
+// way to run up your own API usage and get your merchant account throttled.
+const startPaymentLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many payment attempts. Wait a minute and try again." },
+});
+
+// The browser polls this while the customer authorises on their handset, and
+// each hit can make an outbound call to Paynow - so it is the easiest route
+// here to turn into an amplifier. Generous enough for a 2-3s poll interval.
+const statusLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// The callback is DELIBERATELY loose. Paynow retries up to ten times per
+// transaction and a busy shop can have many in flight at once, all arriving
+// from the same handful of Paynow IPs. This ceiling exists to blunt a flood of
+// forgeries, not to police Paynow: the hash check below is the real defence,
+// and it runs before any database work. Raise it if you process more than a few
+// hundred transactions an hour - a 429 here costs you a fulfilled order.
+const callbackLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // A dropped callback is unrecoverable, so say so loudly rather than silently.
+  handler: (req, res) => {
+    console.error("[paynow] RATE LIMITED a callback - raise callbackLimit.max");
+    res.sendStatus(429);
+  },
+});
 
 function gateway(orderRef) {
   const p = new Paynow(
@@ -39,7 +88,7 @@ function authEmailFor(customerEmail) {
 }
 
 /* ---------- 1. Start a redirect (web) payment ---------- */
-app.post("/checkout/paynow", async (req, res, next) => {
+app.post("/checkout/paynow", startPaymentLimit, async (req, res, next) => {
   try {
     const order = await orders.create(req.body);
     const paynow = gateway(order.reference);
@@ -70,7 +119,7 @@ app.post("/checkout/paynow", async (req, res, next) => {
 });
 
 /* ---------- 2. Start a mobile money payment ---------- */
-app.post("/checkout/paynow/mobile", async (req, res, next) => {
+app.post("/checkout/paynow/mobile", startPaymentLimit, async (req, res, next) => {
   try {
     const { phone, method } = req.body; // 'ecocash' | 'onemoney'
     const order = await orders.create(req.body);
@@ -109,7 +158,7 @@ app.post("/checkout/paynow/mobile", async (req, res, next) => {
  * usually preserves insertion order in V8, but "usually" is a poor foundation for
  * payment verification. express.json() stays on for everything else.
  */
-app.post("/paynow/callback", express.raw({ type: "*/*" }), async (req, res) => {
+app.post("/paynow/callback", callbackLimit, express.raw({ type: "*/*" }), async (req, res) => {
   const fields = PaynowHash.parseResponse(req.body.toString("utf8"));
 
   if (!hasher.verify(fields)) {
@@ -164,7 +213,7 @@ app.get("/paynow/return", async (req, res) => {
  * The browser polls this, never Paynow directly: exposing the poll URL leaks a
  * transaction handle into the page and invites tampering.
  */
-app.get("/paynow/status/:ref", async (req, res) => {
+app.get("/paynow/status/:ref", statusLimit, async (req, res) => {
   const order = await orders.findByReference(req.params.ref);
   if (!order) return res.sendStatus(404);
 

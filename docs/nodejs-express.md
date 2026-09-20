@@ -32,8 +32,17 @@ Ready-to-adapt files live in `assets/node-express/`.
 ## Install & construct
 
 ```bash
-npm install --save paynow
+npm install --save paynow express-rate-limit
 ```
+
+`express-rate-limit` is not a Paynow dependency — it is here because the routes
+below need it. Starting a payment creates an order and calls Paynow, and the
+status route can call Paynow on every hit, so leaving either unlimited hands a
+stranger a way to run up your API usage and get your merchant account throttled.
+Rate-limit the **callback** far more loosely than the rest: Paynow retries up to
+ten times per transaction, and a `429` there costs you a fulfilled order. The
+hash check is the real defence on that route, and it runs before any database
+work. `assets/node-express/routes.js` wires all three.
 
 ```js
 const { Paynow } = require("paynow");

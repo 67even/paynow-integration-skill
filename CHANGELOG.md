@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-09-21
+
+A documentation site, search-engine visibility, fixes for all eight open CodeQL
+alerts, and fourteen corrections from a full audit — four of them places where `PAYNOW.md`
+told readers to do what the rest of the repository calls a critical mistake.
+**Upgrade if you copied anything from `PAYNOW.md` §1, §3.8, §9.3 or §10.2, or the
+Laravel starter's `merchant_trace` handling.**
+
 ### Added
 
 - Documentation site at <https://67even.github.io/paynow-integration-skill/>,
@@ -25,8 +33,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `TechArticle` on each reference page, plus `Organization` and
   `SoftwareSourceCode` for entity matching. Deliberately no `FAQPage` or
   `HowTo` — Google retired both, so that markup would render nothing.
-- `robots` directives with `max-image-preview:large` and `max-snippet:-1`,
-  which `jekyll-seo-tag` does not emit, and an explicit `docs/robots.txt`.
+- `robots` and `googlebot` meta directives with `max-image-preview:large` and
+  `max-snippet:-1`, which `jekyll-seo-tag` does not emit. `docs/robots.txt`
+  is also added, but on a GitHub Pages project site crawlers never read it —
+  only the domain root counts — so its header says so; it takes effect under
+  a custom domain.
 - `last_modified_at` on every page, published as `<lastmod>` in the sitemap and
   as `dateModified` in the structured data. The date only moves when the page
   content actually changes, so `build_docs.py --check` stays green.
@@ -39,6 +50,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   install: where the files go for Claude Code and for claude.ai, how to confirm
   Claude actually loaded it with `/skills`, what to ask once it has, and how to
   update or remove it.
+- Google Search Console verification on the entry page. The token sits in
+  `docs/_config.yml`; `check_meta_tags.py` fails the build if the tag ever goes
+  missing, because Google re-checks it and quietly un-verifies the property.
+- The Paynow button, linked to the developer hub: centred above the README
+  heading, and in the documentation's sidebar footer in place of the theme
+  credit.
+
+### Changed
+
+- `tools/check_links.py` now also checks raw HTML `src` and `href` attributes,
+  skipping targets that contain Liquid. The README's Paynow button and the docs
+  hero images were previously unchecked.
+- The README links to the documentation site.
+- The documentation home page centres its two calls to action, and the second
+  now points at the install page rather than troubleshooting.
 
 ### Fixed
 
@@ -77,7 +103,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `VERIFICATION.md` presented every check as reproducible. Three needed the real
   `paynow/php-sdk` and npm `paynow` installed plus fixtures that were never
   committed; it now says which rows re-run from a clean clone and which do not.
-
 - Every page was rendering without an `<h1>`. `build_docs.py` stripped the source
   heading on the assumption that just-the-docs renders `page.title` as one — its
   default layout emits `{{ content }}` and nothing else, so the pages simply had
@@ -87,10 +112,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The README described installing the packaged bundle by attaching a `.skill`
   file and clicking "Save skill". It is a ZIP, uploaded through
   **Customize → Skills**.
-
-- Google Search Console verification on the entry page. The token sits in
-  `docs/_config.yml`; `check_meta_tags.py` fails the build if the tag ever goes
-  missing, because Google re-checks it and quietly un-verifies the property.
 
 ### Security
 
@@ -105,13 +126,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   it. The host is now anchored at both ends.
 - `tests.yml` declares `permissions: contents: read`. Without it every job ran
   with whatever the repository default grants, which is usually far more.
-
-### Changed
-
-- `tools/check_links.py` now also checks raw HTML `src` and `href` attributes,
-  skipping targets that contain Liquid. The README's Paynow button and the docs
-  hero images were previously unchecked.
-- The README links to the documentation site.
 
 ## [1.0.0] — 2026-09-20
 
@@ -152,3 +166,7 @@ First release.
   broken PHP and Express fixtures.
 
 See [`paynow-skills/VERIFICATION.md`](paynow-skills/VERIFICATION.md) for the full record.
+
+[Unreleased]: https://github.com/67even/paynow-integration-skill/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/67even/paynow-integration-skill/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/67even/paynow-integration-skill/releases/tag/v1.0.0
